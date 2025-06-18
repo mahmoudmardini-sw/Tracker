@@ -59,8 +59,6 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
     return _eventsByDay[DateTime.utc(day.year, day.month, day.day)] ?? [];
   }
 
-  // الدالة _onDaySelected لم تكن مستخدمة، تم دمج منطقها في TableCalendar مباشرة
-
   String _getHabitStatus(HabitRecord record) {
     if (record.value is String) {
       if (record.value == BinaryState.done.toString()) return "تم الإنجاز";
@@ -83,7 +81,7 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             eventLoader: _getEventsForDay,
-            onDaySelected: (selectedDay, focusedDay) { // تم دمج المنطق هنا
+            onDaySelected: (selectedDay, focusedDay) {
               if (!isSameDay(_selectedDay, selectedDay)) {
                 setState(() {
                   _selectedDay = selectedDay;
@@ -143,7 +141,6 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
           ),
         ],
       ),
-      // ... FloatingActionButton يحتاج لإعادة تصميمه ليسمح بإضافة العادات أيضاً
     );
   }
 }
