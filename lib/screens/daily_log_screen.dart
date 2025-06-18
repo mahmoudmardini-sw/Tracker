@@ -93,7 +93,7 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
               }
             },
             headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
-            // .. باقي إعدادات التقويم
+            // . باقي إعدادات التقويم
           ),
           const Divider(height: 1),
           Expanded(
