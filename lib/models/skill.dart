@@ -1,3 +1,5 @@
+// lib/models/skill.dart
+
 import 'package:uuid/uuid.dart';
 import './milestone.dart';
 
@@ -11,6 +13,8 @@ class Skill {
   List<Milestone> milestones;
   List<String> notes;
 
+  // The fix is in this constructor.
+  // We are making sure that the notes list is initialized as a mutable list.
   Skill({
     required this.id,
     required this.name,
@@ -18,11 +22,17 @@ class Skill {
     this.spentValue = 0,
     required this.unit,
     this.category = 'أخرى',
-    this.milestones = const [],
-    this.notes = const [],
-  });
+    List<Milestone>? milestones,
+    List<String>? notes,
+  })  : this.milestones = milestones ?? [],
+        this.notes = notes ?? [];
 
-  double get progress => (requiredValue > 0) ? (spentValue / requiredValue).clamp(0, 1) : 0;
+  double get progress {
+    if (requiredValue <= 0) {
+      return 0.0;
+    }
+    return (spentValue / requiredValue).clamp(0.0, 1.0);
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -36,10 +46,10 @@ class Skill {
   };
 
   factory Skill.fromJson(Map<String, dynamic> json) => Skill(
-    id: json['id'] ?? Uuid().v4(),
+    id: json['id'] ?? const Uuid().v4(),
     name: json['name'],
-    requiredValue: json['requiredValue'],
-    spentValue: json['spentValue'] ?? 0.0,
+    requiredValue: (json['requiredValue'] as num).toDouble(),
+    spentValue: (json['spentValue'] as num?)?.toDouble() ?? 0.0,
     unit: json['unit'] ?? 'ساعة',
     category: json['category'] ?? 'أخرى',
     milestones: (json['milestones'] as List<dynamic>?)

@@ -1,0 +1,55 @@
+{
+  "@@locale": "en",
+  "appTitle": "Achievement Dashboard",
+  "skillsTab": "Skills",
+  "habitsTab": "Habits",
+  "addSkill": "Add Skill",
+  "addHabit": "Add Habit",
+  "achievementsLog": "Achievements Log",
+  "settings": "Settings",
+  "noSkillsMessage": "No skills to display.",
+  "filter": "Filter",
+  "completed": "Completed: {spentValue} / {requiredValue} {unit}",
+  "@completed": {
+    "placeholders": {
+      "spentValue": {},
+      "requiredValue": {},
+      "unit": {}
+    }
+  },
+  "addProgressTo": "Add Progress to \"{skillName}\"",
+  "@addProgressTo": {
+    "placeholders": {
+      "skillName": {}
+    }
+  },
+  "addProgress": "Add Progress",
+  "addedAmount": "Added Amount ({unit})",
+  "@addedAmount": {
+    "placeholders": {
+      "unit": {}
+    }
+  },
+  "pleaseEnterValue": "Please enter a value",
+  "pleaseEnterNumber": "Please enter a valid number",
+  "cancel": "Cancel",
+  "save": "Save",
+  "nightMode": "Night Mode",
+  "enableDarkMode": "Enable dark theme for the app",
+  "defaultUnit": "Default Unit for New Skills",
+  "currentUnit": "Current unit: {unit}",
+  "@currentUnit": {
+    "placeholders": {
+      "unit": {}
+    }
+  },
+  "showCompletedSkills": "Show Completed Skills",
+  "language": "Language",
+  "deleteAllData": "Delete All Data",
+  "deleteAllDataSub": "Permanently delete all skills, habits, and logs",
+  "deleteConfirmationTitle": "Confirm Deletion",
+  "deleteAllDataConfirmation": "Are you sure you want to delete all data? This action cannot be undone.",
+  "delete": "Delete",
+  "all": "All",
+  "noHabitsMessage": "No habits yet. Add a new one to get started!"
+}

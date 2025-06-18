@@ -1,0 +1,11 @@
+//output-dir: lib/l10n
+//output-localization-file: app_localizations.dart
+
+
+# l10n.yaml
+
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+
+# هذا هو السطر الجديد والمهم جداً
+synthetic-package: false

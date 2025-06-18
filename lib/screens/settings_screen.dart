@@ -1,37 +1,37 @@
-// lib/screens/settings_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+// NEW: Changed the import to a direct relative path
+import '../l10n/app_localizations.dart';
 import '../providers/app_provider.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({Key? key}) : super(key: key);
+  const SettingsScreen({super.key});
 
-  // NEW: Confirmation dialog logic
   void _showDeleteConfirmationDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('تأكيد الحذف'),
-          content: const Text('هل أنت متأكد من رغبتك في حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء.'),
+          title: Text(l10n.deleteConfirmationTitle),
+          content: Text(l10n.deleteAllDataConfirmation),
           actions: <Widget>[
             TextButton(
-              child: const Text('إلغاء'),
+              child: Text(l10n.cancel),
               onPressed: () {
-                Navigator.of(dialogContext).pop(); // Close the dialog
+                Navigator.of(dialogContext).pop();
               },
             ),
             TextButton(
-              child: Text('حذف', style: TextStyle(color: Colors.red.shade400)),
+              child: Text(l10n.delete, style: TextStyle(color: Colors.red.shade400)),
               onPressed: () {
-                // Call the provider to delete all data
                 Provider.of<AppProvider>(context, listen: false).deleteAllData();
-                Navigator.of(dialogContext).pop(); // Close the dialog
-                // Optional: Show a confirmation snackbar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم حذف جميع البيانات بنجاح.')),
-                );
+                Navigator.of(dialogContext).pop();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('All data has been deleted.')),
+                  );
+                }
               },
             ),
           ],
@@ -40,43 +40,53 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
 
     final List<String> units = const [
       'ساعة', 'صفحة', 'سورة', 'كتاب', 'جلسة تدريبية',
       'تكرار', 'مجموعة', 'دقيقة', 'كيلو متر', 'خطوة',
       'جزء', 'فصل', 'مقال',
     ];
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('الإعدادات'),
+        title: Text(l10n.settings),
       ),
       body: ListView(
         padding: const EdgeInsets.all(8.0),
         children: [
           SwitchListTile(
-            title: const Text('الوضع الليلي'),
-            subtitle: const Text('تفعيل الثيم الداكن للتطبيق'),
+            title: Text(l10n.nightMode),
+            subtitle: Text(l10n.enableDarkMode),
             value: provider.themeMode == ThemeMode.dark,
-            onChanged: (isDarkMode) {
-              provider.toggleTheme(isDarkMode);
-            },
+            onChanged: (isDarkMode) => provider.toggleTheme(isDarkMode),
           ),
           const Divider(),
           ListTile(
-            title: const Text('الوحدة الافتراضية للمهارات الجديدة'),
-            subtitle: Text('الوحدة الحالية: ${provider.defaultUnit}'),
+            title: Text(l10n.language),
+            trailing: DropdownButton<Locale>(
+              value: provider.appLocale,
+              items: const [
+                DropdownMenuItem(value: Locale('en'), child: Text('English')),
+                DropdownMenuItem(value: Locale('ar'), child: Text('العربية')),
+              ],
+              onChanged: (newLocale) {
+                if (newLocale != null) {
+                  provider.changeLanguage(newLocale);
+                }
+              },
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            title: Text(l10n.defaultUnit),
+            subtitle: Text(l10n.currentUnit(provider.defaultUnit)),
             trailing: DropdownButton<String>(
               value: provider.defaultUnit,
-              items: units.map((String unit) {
-                return DropdownMenuItem<String>(
-                  value: unit,
-                  child: Text(unit),
-                );
-              }).toList(),
+              items: units.map((String unit) => DropdownMenuItem<String>(value: unit, child: Text(unit))).toList(),
               onChanged: (newValue) {
                 if (newValue != null) {
                   provider.setDefaultUnit(newValue);
@@ -86,22 +96,16 @@ class SettingsScreen extends StatelessWidget {
           ),
           const Divider(),
           SwitchListTile(
-            title: const Text('إظهار المهارات المكتملة'),
-            subtitle: const Text('عرض المهارات التي تم إنجازها بنسبة 100%'),
+            title: Text(l10n.showCompletedSkills),
             value: provider.showCompletedSkills,
-            onChanged: (value) {
-              provider.toggleShowCompletedSkills(value);
-            },
+            onChanged: (value) => provider.toggleShowCompletedSkills(value),
           ),
           const Divider(),
-          // NEW: Delete all data button
           ListTile(
             leading: Icon(Icons.delete_forever_outlined, color: Colors.red.shade400),
-            title: Text('حذف جميع البيانات', style: TextStyle(color: Colors.red.shade400)),
-            subtitle: const Text('حذف جميع المهارات والعادات والسجلات بشكل دائم'),
-            onTap: () {
-              _showDeleteConfirmationDialog(context);
-            },
+            title: Text(l10n.deleteAllData, style: TextStyle(color: Colors.red.shade400)),
+            subtitle: Text(l10n.deleteAllDataSub),
+            onTap: () => _showDeleteConfirmationDialog(context),
           ),
         ],
       ),
