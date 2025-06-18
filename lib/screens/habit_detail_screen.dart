@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart'; // <-- CORRECTION 1: Fixed the import path
 
 import '../models/habit.dart';
 import '../models/habit_record.dart';
@@ -12,7 +11,7 @@ import '../providers/app_provider.dart';
 
 class HabitDetailScreen extends StatefulWidget {
   final Habit habit;
-  const HabitDetailScreen({Key? key, required this.habit}) : super(key: key);
+  const HabitDetailScreen({super.key, required this.habit});
 
   @override
   State<HabitDetailScreen> createState() => _HabitDetailScreenState();
@@ -28,7 +27,6 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     _selectedDay = _focusedDay;
   }
 
-  // CORRECTION 2: This function is now defined only once.
   void _handleDayTap(BuildContext context, DateTime day) {
     final provider = Provider.of<AppProvider>(context, listen: false);
     final record = provider.getHabitRecordForDay(widget.habit.id, day);
@@ -64,7 +62,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
               onPressed: () {
                 final int? count = int.tryParse(countController.text);
                 if (count != null && count >= 0) {
-                  provider.logHabit(HabitRecord(habitId: widget.habit.id, date: day, value: count));
+                  provider.logHabit(HabitRecord(habitId: widget.habit.id, date: day, value: count.toString()));
                 }
                 Navigator.pop(context);
               },
@@ -76,39 +74,14 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     }
   }
 
-  Widget _buildStatsCard(int current, int best) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            Column(
-              children: [
-                Text('السلسلة الحالية', style: TextStyle(color: Colors.grey.shade600)),
-                Text('$current أيام', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            Column(
-              children: [
-                Text('أفضل سلسلة', style: TextStyle(color: Colors.grey.shade600)),
-                Text('$best أيام', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildBarChart(BuildContext context, List<HabitRecord> records, HabitType type, bool isDarkMode) {
     final Map<int, double> monthlyData = {};
     for (var record in records) {
       double value = 0;
       if (type == HabitType.binary && record.value == BinaryState.done.toString()) {
         value = 1;
-      } else if (type == HabitType.counter && record.value is int) {
-        value = (record.value as int).toDouble();
+      } else if (type == HabitType.counter && record.value is String) {
+        value = double.tryParse(record.value) ?? 0.0;
       }
       monthlyData.update(record.date.month, (v) => v + value, ifAbsent: () => value);
     }
@@ -139,17 +112,16 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                getTitlesWidget: (value, meta) {
+                reservedSize: 30,
+                getTitlesWidget: (double value, TitleMeta meta) {
                   final month = value.toInt();
                   final year = DateTime.now().year.toString().substring(2);
                   final text = '${month.toString().padLeft(2, '0')}.$year';
-                  return SideTitleWidget(
-                      axisSide: meta.axisSide,
-                      space: 4,
-                      child: Text(text, style: const TextStyle(fontSize: 12))
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Text(text, style: const TextStyle(fontSize: 12)),
                   );
                 },
-                reservedSize: 30,
               ),
             ),
           ),
@@ -160,10 +132,34 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     );
   }
 
+  Widget _buildStatsCard(int current, int best) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            Column(
+              children: [
+                Text('السلسلة الحالية', style: TextStyle(color: Colors.grey.shade600)),
+                Text('$current أيام', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            Column(
+              children: [
+                Text('أفضل سلسلة', style: TextStyle(color: Colors.grey.shade600)),
+                Text('$best أيام', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         final records = provider.habitRecords.where((r) => r.habitId == widget.habit.id).toList();
@@ -250,7 +246,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                         } else if (record.value == BinaryState.skipped.toString()) {
                           decorationColor = isDarkMode ? Colors.red.shade300 : Colors.red;
                           textStyle = textStyle.copyWith(decoration: TextDecoration.lineThrough);
-                        } else if (record.value is int && record.value > 0) {
+                        } else if (record.value is String && (double.tryParse(record.value) ?? 0) > 0) {
                           decorationColor = isDarkMode ? Colors.blue.shade300 : Colors.blue;
                         }
 

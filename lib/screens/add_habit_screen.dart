@@ -1,3 +1,5 @@
+// lib/screens/add_habit_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
@@ -5,8 +7,11 @@ import '../models/habit.dart';
 import '../providers/app_provider.dart';
 
 class AddHabitScreen extends StatefulWidget {
+  // The fix is here: We added a const constructor.
+  const AddHabitScreen({super.key});
+
   @override
-  _AddHabitScreenState createState() => _AddHabitScreenState();
+  State<AddHabitScreen> createState() => _AddHabitScreenState();
 }
 
 class _AddHabitScreenState extends State<AddHabitScreen> {
@@ -16,7 +21,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   void _submit() {
     if (_nameController.text.trim().isNotEmpty) {
       final newHabit = Habit(
-        id: Uuid().v4(),
+        id: const Uuid().v4(),
         name: _nameController.text.trim(),
         type: _selectedType,
       );
@@ -34,7 +39,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('إضافة عادة جديدة')),
+      appBar: AppBar(title: const Text('إضافة عادة جديدة')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

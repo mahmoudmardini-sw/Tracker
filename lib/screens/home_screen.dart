@@ -5,11 +5,12 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../l10n/app_localizations.dart';
 
 import '../providers/app_provider.dart';
 import '../models/skill.dart';
-import '../models/daily_log.dart';
 import '../models/milestone.dart';
+import '../models/daily_log.dart';
 import '../models/habit.dart';
 import '../models/habit_record.dart';
 import '../constants/motivational_quotes.dart';
@@ -21,22 +22,26 @@ import 'settings_screen.dart';
 import 'habit_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
+
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _categories = ['الكل', 'القرآن', 'رياضة', 'Computer Science', 'لغات', 'أخرى'];
 
+  bool _isFilterVisible = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // NEW: Add a listener to rebuild the widget when the tab changes, to update the FAB's tooltip.
     _tabController.addListener(() {
-      setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     });
   }
 
@@ -48,29 +53,39 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final provider = Provider.of<AppProvider>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('لوحة الإنجاز'),
+        title: Text(l10n.appTitle),
         actions: [
-          // NEW: Moved the "Add" button here from the FAB
+          if (_tabController.index == 0)
+            IconButton(
+              icon: const Icon(Icons.filter_list),
+              tooltip: l10n.filter,
+              onPressed: () {
+                setState(() {
+                  _isFilterVisible = !_isFilterVisible;
+                });
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.add),
-            tooltip: _tabController.index == 0 ? 'إضافة مهارة' : 'إضافة عادة',
+            tooltip: _tabController.index == 0 ? l10n.addSkill : l10n.addHabit,
             onPressed: () {
               if (_tabController.index == 0) {
                 Navigator.of(context).push(MaterialPageRoute(
                   builder: (context) => AddSkillScreen(categories: _categories.sublist(1)),
                 ));
               } else {
-                Navigator.of(context).push(MaterialPageRoute(builder: (context) => AddHabitScreen()));
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AddHabitScreen()));
               }
             },
           ),
           IconButton(
             icon: const Icon(Icons.calendar_today_outlined),
-            tooltip: 'سجل الإنجازات',
+            tooltip: l10n.achievementsLog,
             onPressed: () {
               Navigator.push(context, MaterialPageRoute(builder: (context) => DailyLogScreen(skills: provider.skills)));
             },
@@ -82,11 +97,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'settings',
                 child: ListTile(
-                  leading: Icon(Icons.settings_outlined),
-                  title: Text('الإعدادات'),
+                  leading: const Icon(Icons.settings_outlined),
+                  title: Text(l10n.settings),
                 ),
               ),
             ],
@@ -94,30 +109,38 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.auto_awesome), text: 'المهارات'),
-            Tab(icon: Icon(Icons.repeat_on_rounded), text: 'العادات'),
+          tabs: [
+            Tab(icon: const Icon(Icons.auto_awesome), text: l10n.skillsTab),
+            Tab(icon: const Icon(Icons.repeat_on_rounded), text: l10n.habitsTab),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          SkillsTab(categories: _categories),
-          HabitsTab(),
+          SkillsTab(
+            categories: _categories,
+            isFilterVisible: _isFilterVisible,
+          ),
+          const HabitsTab(),
         ],
       ),
-      // NEW: The FloatingActionButton has been removed from here.
     );
   }
 }
 
 class SkillsTab extends StatelessWidget {
   final List<String> categories;
-  const SkillsTab({Key? key, required this.categories}) : super(key: key);
+  final bool isFilterVisible;
 
-  // NEW: Function to show the dialog for adding progress
+  const SkillsTab({
+    super.key,
+    required this.categories,
+    required this.isFilterVisible,
+  });
+
   void _showAddProgressDialog(BuildContext context, Skill skill) {
+    final l10n = AppLocalizations.of(context)!;
     final controller = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
@@ -125,7 +148,7 @@ class SkillsTab extends StatelessWidget {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('إضافة تقدم لـ "${skill.name}"'),
+          title: Text(l10n.addProgressTo(skill.name)),
           content: Form(
             key: formKey,
             child: TextFormField(
@@ -134,16 +157,12 @@ class SkillsTab extends StatelessWidget {
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*'))],
               decoration: InputDecoration(
-                labelText: 'الكمية المضافة (${skill.unit})',
+                labelText: l10n.addedAmount(skill.unit),
                 border: const OutlineInputBorder(),
               ),
               validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'الرجاء إدخال قيمة';
-                }
-                if (double.tryParse(value) == null) {
-                  return 'الرجاء إدخال رقم صحيح';
-                }
+                if (value == null || value.isEmpty) return l10n.pleaseEnterValue;
+                if (double.tryParse(value) == null) return l10n.pleaseEnterNumber;
                 return null;
               },
             ),
@@ -151,7 +170,7 @@ class SkillsTab extends StatelessWidget {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء'),
+              child: Text(l10n.cancel),
             ),
             ElevatedButton(
               onPressed: () {
@@ -159,11 +178,9 @@ class SkillsTab extends StatelessWidget {
                   final value = double.parse(controller.text);
                   final provider = Provider.of<AppProvider>(context, listen: false);
 
-                  // Update skill progress
                   skill.spentValue += value;
                   provider.updateSkill(skill);
 
-                  // Add a log entry
                   final log = DailyLog(
                     id: const Uuid().v4(),
                     skillId: skill.id,
@@ -176,7 +193,7 @@ class SkillsTab extends StatelessWidget {
                   Navigator.pop(context);
                 }
               },
-              child: const Text('حفظ'),
+              child: Text(l10n.save),
             ),
           ],
         );
@@ -186,6 +203,10 @@ class SkillsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final originalCategories = categories;
+    final localizedCategories = [l10n.all, ...originalCategories.sublist(1)];
+
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         List<Skill> skillsToDisplay = provider.skills;
@@ -201,31 +222,36 @@ class SkillsTab extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.all(12.0),
-              child: Text(getRandomQuote(), textAlign: TextAlign.center, style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[600])),
+              child: Text(getRandomQuote(context), textAlign: TextAlign.center, style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey[600])),
             ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                children: categories.map((category) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                    child: ChoiceChip(
-                      label: Text(category),
-                      selected: provider.selectedCategory == category,
-                      onSelected: (selected) {
-                        if (selected) {
-                          provider.setSelectedCategory(category);
-                        }
-                      },
-                    ),
-                  );
-                }).toList(),
+            Visibility(
+              visible: isFilterVisible,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  children: localizedCategories.map((category) {
+                    final originalCategoryValue = (category == l10n.all) ? 'الكل' : category;
+                    final isSelected = provider.selectedCategory == originalCategoryValue;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: ChoiceChip(
+                        label: Text(category),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            provider.setSelectedCategory(originalCategoryValue);
+                          }
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
               ),
             ),
             Expanded(
               child: skillsToDisplay.isEmpty
-                  ? const Center(child: Text('لا يوجد مهارات لعرضها.'))
+                  ? Center(child: Text(l10n.noSkillsMessage))
                   : ListView.builder(
                 padding: const EdgeInsets.all(8),
                 itemCount: skillsToDisplay.length,
@@ -237,9 +263,7 @@ class SkillsTab extends StatelessWidget {
                     child: InkWell(
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(
-                          builder: (context) => SkillDetailScreen(
-                            skill: skill,
-                          ),
+                          builder: (context) => SkillDetailScreen(skill: skill),
                         ));
                       },
                       child: Padding(
@@ -251,16 +275,15 @@ class SkillsTab extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Expanded(child: Text(skill.name, style: Theme.of(context).textTheme.titleLarge)),
-                                // NEW: Add progress button
                                 IconButton(
                                   icon: const Icon(Icons.add_task),
-                                  tooltip: 'إضافة تقدم',
+                                  tooltip: l10n.addProgress,
                                   onPressed: () => _showAddProgressDialog(context, skill),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text('المنجز: ${skill.spentValue.toStringAsFixed(1)} / ${skill.requiredValue.toStringAsFixed(1)} ${skill.unit}'),
+                            Text(l10n.completed(skill.spentValue.toStringAsFixed(1), skill.requiredValue.toStringAsFixed(1), skill.unit)),
                             const SizedBox(height: 8),
                             MilestoneProgressBar(skill: skill),
                           ],
@@ -278,10 +301,9 @@ class SkillsTab extends StatelessWidget {
   }
 }
 
-// ... MilestoneProgressBar Widget (no changes) ...
 class MilestoneProgressBar extends StatelessWidget {
   final Skill skill;
-  const MilestoneProgressBar({Key? key, required this.skill}) : super(key: key);
+  const MilestoneProgressBar({super.key, required this.skill});
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -292,11 +314,19 @@ class MilestoneProgressBar extends StatelessWidget {
           children: [
             Container(
               height: 8,
-              child: LinearProgressIndicator(
-                value: skill.progress,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
                 borderRadius: BorderRadius.circular(4),
-                color: skill.progress == 1.0 ? Colors.green : Theme.of(context).primaryColor,
-                backgroundColor: Colors.grey.shade300,
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: skill.progress,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: skill.progress == 1.0 ? Colors.green : Theme.of(context).primaryColor,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ),
             ),
             if (skill.milestones.isNotEmpty)
@@ -320,17 +350,22 @@ class MilestoneProgressBar extends StatelessWidget {
                     ),
                   ),
                 );
-              }).toList(),
+              }),
           ],
         );
       },
     );
   }
 }
-// ... HabitsTab, _HabitRow, _HabitDayCell Widgets (no changes) ...
+
 class HabitsTab extends StatelessWidget {
+  const HabitsTab({super.key});
+
   @override
   Widget build(BuildContext context) {
+    // Define l10n here to use it for localization
+    final l10n = AppLocalizations.of(context)!;
+
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         final habits = provider.habits;
@@ -339,8 +374,11 @@ class HabitsTab extends StatelessWidget {
         }).reversed.toList();
 
         if (habits.isEmpty) {
-          return const Center(child: Text('لا توجد عادات بعد. قم بإضافة عادة جديدة!'));
+          // THE FIX IS HERE
+          return Center(child: Text(l10n.noHabitsMessage));
         }
+
+        final locale = Localizations.localeOf(context).languageCode;
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(8),
@@ -350,14 +388,14 @@ class HabitsTab extends StatelessWidget {
                 padding: const EdgeInsets.only(right: 8.0, left: 16.0),
                 child: Row(
                   children: [
-                    const Expanded(child: SizedBox()),
+                    const Expanded(child: SizedBox.shrink()),
                     Row(
                       children: recentDays.map((day) {
-                        return Container(
+                        return SizedBox(
                           width: 50,
                           child: Column(
                             children: [
-                              Text(DateFormat('E', 'ar_SA').format(day), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                              Text(DateFormat('E', locale).format(day), style: const TextStyle(fontSize: 12, color: Colors.grey)),
                               Text(day.day.toString(), style: Theme.of(context).textTheme.bodyLarge),
                             ],
                           ),
@@ -435,7 +473,7 @@ class _HabitDayCell extends StatelessWidget {
       } else {
         provider.logHabit(HabitRecord(habitId: habit.id, date: day, value: BinaryState.done.toString()));
       }
-    } else { // Counter
+    } else {
       final countController = TextEditingController(text: record?.value?.toString() ?? '0');
       showDialog(
         context: context,
@@ -453,7 +491,7 @@ class _HabitDayCell extends StatelessWidget {
               onPressed: () {
                 final int? count = int.tryParse(countController.text);
                 if (count != null && count >= 0) {
-                  provider.logHabit(HabitRecord(habitId: habit.id, date: day, value: count));
+                  provider.logHabit(HabitRecord(habitId: habit.id, date: day, value: count.toString()));
                 }
                 Navigator.pop(context);
               },
@@ -497,12 +535,14 @@ class _HabitDayCell extends StatelessWidget {
         }
       }
       cellContent = Icon(iconData, color: iconColor, size: 24);
-    } else { // Counter
+    } else {
+      final valueStr = record?.value?.toString() ?? "-";
+      final isDone = (int.tryParse(valueStr) ?? 0) > 0;
       cellContent = Text(
-        record?.value?.toString() ?? "-",
+        valueStr,
         style: TextStyle(
           fontSize: 16,
-          color: (record?.value ?? 0) > 0 ? Theme.of(context).colorScheme.primary : Colors.grey,
+          color: isDone ? Theme.of(context).colorScheme.primary : Colors.grey,
           fontWeight: FontWeight.bold,
         ),
       );
@@ -512,11 +552,10 @@ class _HabitDayCell extends StatelessWidget {
       onTap: () => _handleTap(context),
       onLongPress: () => _handleLongPress(context),
       borderRadius: BorderRadius.circular(8),
-      child: Container(
+      child: SizedBox(
         width: 50,
         height: 50,
-        alignment: Alignment.center,
-        child: cellContent,
+        child: Center(child: cellContent),
       ),
     );
   }

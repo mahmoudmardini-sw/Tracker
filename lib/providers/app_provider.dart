@@ -1,12 +1,14 @@
+// lib/providers/app_provider.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:table_calendar/table_calendar.dart';
 import 'dart:convert';
 import '../models/skill.dart';
 import '../models/daily_log.dart';
 import '../models/habit.dart';
 import '../models/habit_record.dart';
 import '../constants/app_constants.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class AppProvider with ChangeNotifier {
   final SharedPreferences prefs;
@@ -15,6 +17,7 @@ class AppProvider with ChangeNotifier {
   String _defaultUnit = 'ساعة';
   bool _showCompletedSkills = true;
   String _selectedCategory = 'الكل';
+  Locale _appLocale = const Locale('en'); // Default to English
 
   List<Skill> _skills = [];
   List<DailyLog> _dailyLogs = [];
@@ -31,10 +34,15 @@ class AppProvider with ChangeNotifier {
   String get selectedCategory => _selectedCategory;
   List<Habit> get habits => _habits;
   List<HabitRecord> get habitRecords => _habitRecords;
+  Locale get appLocale => _appLocale;
 
   void loadAllData() {
     final themeString = prefs.getString(AppConstants.themeModeKey) ?? ThemeMode.system.toString();
     _themeMode = ThemeMode.values.firstWhere((e) => e.toString() == themeString, orElse: () => ThemeMode.system);
+
+    final languageCode = prefs.getString(AppConstants.languageCodeKey) ?? 'en';
+    _appLocale = Locale(languageCode);
+
     _defaultUnit = prefs.getString(AppConstants.defaultUnitKey) ?? 'ساعة';
     _showCompletedSkills = prefs.getBool(AppConstants.showCompletedSkillsKey) ?? true;
     _selectedCategory = prefs.getString(AppConstants.selectedCategoryKey) ?? 'الكل';
@@ -84,6 +92,12 @@ class AppProvider with ChangeNotifier {
   void toggleTheme(bool isDarkMode) {
     _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
     prefs.setString(AppConstants.themeModeKey, _themeMode.toString());
+    notifyListeners();
+  }
+
+  Future<void> changeLanguage(Locale newLocale) async {
+    _appLocale = newLocale;
+    await prefs.setString(AppConstants.languageCodeKey, newLocale.languageCode);
     notifyListeners();
   }
 
@@ -164,9 +178,7 @@ class AppProvider with ChangeNotifier {
   }
 
   void logHabit(HabitRecord record) {
-    // إزالة السجل القديم لنفس اليوم ونفس العادة، إن وجد
     _habitRecords.removeWhere((r) => r.habitId == record.habitId && isSameDay(r.date, record.date));
-    // إضافة السجل الجديد
     _habitRecords.add(record);
     _saveHabitRecords();
     notifyListeners();
@@ -177,37 +189,17 @@ class AppProvider with ChangeNotifier {
     _saveHabitRecords();
     notifyListeners();
   }
-// أضف هذه الدوال داخل كلاس AppProvider في ملف lib/providers/app_provider.dart
 
   void addNoteToSkill(String skillId, String noteText) {
     try {
       final skill = _skills.firstWhere((s) => s.id == skillId);
       skill.notes.insert(0, noteText);
-      _saveSkills(); // هذه الدالة تقوم بالحفظ واستدعاء notifyListeners()
+      _saveSkills();
     } catch (e) {
       //
     }
   }
-// Add this method inside the AppProvider class
 
-  Future<void> deleteAllData() async {
-    // Clear state lists
-    _skills.clear();
-    _dailyLogs.clear();
-    _habits.clear();
-    _habitRecords.clear();
-
-    // Clear SharedPreferences
-    await prefs.remove(AppConstants.skillsDataKey);
-    await prefs.remove(AppConstants.dailyLogsDataKey);
-    await prefs.remove(AppConstants.habitsDataKey);
-    await prefs.remove(AppConstants.habitRecordsDataKey);
-    // You can also reset settings to default if you want
-    // await prefs.remove(AppConstants.selectedCategoryKey);
-
-    // Notify all listeners to rebuild the UI
-    notifyListeners();
-  }
   void removeNoteFromSkill(String skillId, int noteIndex) {
     try {
       final skill = _skills.firstWhere((s) => s.id == skillId);
@@ -217,11 +209,26 @@ class AppProvider with ChangeNotifier {
       //
     }
   }
+
   HabitRecord? getHabitRecordForDay(String habitId, DateTime day) {
     try {
       return _habitRecords.firstWhere((r) => r.habitId == habitId && isSameDay(r.date, day));
     } catch (e) {
       return null;
     }
+  }
+
+  Future<void> deleteAllData() async {
+    _skills.clear();
+    _dailyLogs.clear();
+    _habits.clear();
+    _habitRecords.clear();
+
+    await prefs.remove(AppConstants.skillsDataKey);
+    await prefs.remove(AppConstants.dailyLogsDataKey);
+    await prefs.remove(AppConstants.habitsDataKey);
+    await prefs.remove(AppConstants.habitRecordsDataKey);
+
+    notifyListeners();
   }
 }

@@ -1,0 +1,55 @@
+{
+  "@@locale": "ar",
+  "appTitle": "لوحة الإنجاز",
+  "skillsTab": "المهارات",
+  "habitsTab": "العادات",
+  "addSkill": "إضافة مهارة",
+  "addHabit": "إضافة عادة",
+  "achievementsLog": "سجل الإنجازات",
+  "settings": "الإعدادات",
+  "noSkillsMessage": "لا يوجد مهارات لعرضها.",
+  "filter": "فلترة",
+  "completed": "المنجز: {spentValue} / {requiredValue} {unit}",
+  "@completed": {
+    "placeholders": {
+      "spentValue": {},
+      "requiredValue": {},
+      "unit": {}
+    }
+  },
+  "addProgressTo": "إضافة تقدم لـ \"{skillName}\"",
+  "@addProgressTo": {
+    "placeholders": {
+      "skillName": {}
+    }
+  },
+  "addProgress": "إضافة تقدم",
+  "addedAmount": "الكمية المضافة ({unit})",
+  "@addedAmount": {
+    "placeholders": {
+      "unit": {}
+    }
+  },
+  "pleaseEnterValue": "الرجاء إدخال قيمة",
+  "pleaseEnterNumber": "الرجاء إدخال رقم صحيح",
+  "cancel": "إلغاء",
+  "save": "حفظ",
+  "nightMode": "الوضع الليلي",
+  "enableDarkMode": "تفعيل الثيم الداكن للتطبيق",
+  "defaultUnit": "الوحدة الافتراضية للمهارات الجديدة",
+  "currentUnit": "الوحدة الحالية: {unit}",
+  "@currentUnit": {
+    "placeholders": {
+      "unit": {}
+    }
+  },
+  "showCompletedSkills": "إظهار المهارات المكتملة",
+  "language": "اللغة",
+  "deleteAllData": "حذف جميع البيانات",
+  "deleteAllDataSub": "حذف جميع المهارات والعادات والسجلات بشكل دائم",
+  "deleteConfirmationTitle": "تأكيد الحذف",
+  "deleteAllDataConfirmation": "هل أنت متأكد من رغبتك في حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء.",
+  "delete": "حذف",
+  "all": "All",
+  "noHabitsMessage": "لا توجد عادات بعد. قم بإضافة عادة جديدة!"
+}
