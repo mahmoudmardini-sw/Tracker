@@ -188,7 +188,26 @@ class AppProvider with ChangeNotifier {
       //
     }
   }
+// Add this method inside the AppProvider class
 
+  Future<void> deleteAllData() async {
+    // Clear state lists
+    _skills.clear();
+    _dailyLogs.clear();
+    _habits.clear();
+    _habitRecords.clear();
+
+    // Clear SharedPreferences
+    await prefs.remove(AppConstants.skillsDataKey);
+    await prefs.remove(AppConstants.dailyLogsDataKey);
+    await prefs.remove(AppConstants.habitsDataKey);
+    await prefs.remove(AppConstants.habitRecordsDataKey);
+    // You can also reset settings to default if you want
+    // await prefs.remove(AppConstants.selectedCategoryKey);
+
+    // Notify all listeners to rebuild the UI
+    notifyListeners();
+  }
   void removeNoteFromSkill(String skillId, int noteIndex) {
     try {
       final skill = _skills.firstWhere((s) => s.id == skillId);

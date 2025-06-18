@@ -4,134 +4,76 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
-import 'dart:math';
+import 'package:intl/intl.dart'; // <-- CORRECTION 1: Fixed the import path
 
 import '../models/habit.dart';
-import '../models/habit_record.dart'; // <-- إصلاح: إضافة الاستيراد المفقود
+import '../models/habit_record.dart';
 import '../providers/app_provider.dart';
 
-class HabitDetailScreen extends StatelessWidget {
+class HabitDetailScreen extends StatefulWidget {
   final Habit habit;
   const HabitDetailScreen({Key? key, required this.habit}) : super(key: key);
 
   @override
-  Widget build(BuildContext context) {
-    // نستخدم Consumer لضمان تحديث الواجهة عند تغيير البيانات
-    return Consumer<AppProvider>(
-      builder: (context, provider, child) {
-        final records = provider.habitRecords.where((r) => r.habitId == habit.id).toList();
-        records.sort((a, b) => a.date.compareTo(b.date));
+  State<HabitDetailScreen> createState() => _HabitDetailScreenState();
+}
 
-        // --- حساب الإحصائيات ---
-        int currentStreak = 0;
-        int bestStreak = 0;
+class _HabitDetailScreenState extends State<HabitDetailScreen> {
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
 
-        if (habit.type == HabitType.binary) {
-          int tempStreak = 0;
-          // حساب أفضل سلسلة
-          if (records.isNotEmpty) {
-            for (int i = 0; i < records.length; i++) {
-              if (records[i].value == BinaryState.done.toString()) {
-                tempStreak++;
-                // تحقق من اليوم التالي
-                if (i < records.length - 1) {
-                  final difference = records[i+1].date.difference(records[i].date).inDays;
-                  if (difference > 1) { // إذا كان الفرق أكثر من يوم، انقطعت السلسلة
-                    if (tempStreak > bestStreak) bestStreak = tempStreak;
-                    tempStreak = 0;
-                  }
-                }
-              } else { // إذا لم تكن "done" انقطعت السلسلة
-                if (tempStreak > bestStreak) bestStreak = tempStreak;
-                tempStreak = 0;
-              }
-            }
-          }
-          if (tempStreak > bestStreak) bestStreak = tempStreak;
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
+  }
 
-          // حساب السلسلة الحالية
-          DateTime checkDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-          if (records.any((r) => isSameDay(r.date, checkDay) && r.value == BinaryState.done.toString())) {
-            currentStreak = 1;
-            while(true) {
-              checkDay = checkDay.subtract(const Duration(days: 1));
-              if (records.any((r) => isSameDay(r.date, checkDay) && r.value == BinaryState.done.toString())) {
-                currentStreak++;
-              } else {
-                break;
-              }
-            }
-          }
-        }
-        // --- نهاية حساب الإحصائيات ---
+  // CORRECTION 2: This function is now defined only once.
+  void _handleDayTap(BuildContext context, DateTime day) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final record = provider.getHabitRecordForDay(widget.habit.id, day);
 
-        return Scaffold(
-          appBar: AppBar(title: Text(habit.name)),
-          body: ListView(
-            padding: const EdgeInsets.all(16.0),
-            children: [
-              if (habit.type == HabitType.binary)
-                _buildStatsCard(currentStreak, bestStreak),
+    if (day.isAfter(DateTime.now())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا يمكن تسجيل إنجاز في المستقبل.'))
+      );
+      return;
+    }
 
-              const SizedBox(height: 24),
-              Text('السجل الشهري', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              _buildBarChart(context, records, habit.type),
-              const SizedBox(height: 24),
-
-              Text('التقويم', style: Theme.of(context).textTheme.titleLarge),
-              Card(
-                margin: const EdgeInsets.only(top: 8),
-                child: TableCalendar(
-                  locale: 'ar_SA',
-                  firstDay: records.isNotEmpty ? records.first.date : DateTime.now().subtract(const Duration(days: 365)),
-                  lastDay: DateTime.now().add(const Duration(days: 365)),
-                  focusedDay: DateTime.now(),
-                  calendarFormat: CalendarFormat.month,
-                  headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
-                  calendarBuilders: CalendarBuilders(
-                    defaultBuilder: (context, day, focusedDay) {
-                      // --- إصلاح: طريقة آمنة للبحث عن السجل ---
-                      HabitRecord? record;
-                      try {
-                        record = records.firstWhere((r) => isSameDay(r.date, day));
-                      } catch (e) {
-                        record = null;
-                      }
-                      // --- نهاية الإصلاح ---
-
-                      if (record != null) {
-                        if (record.value == BinaryState.done.toString()) {
-                          return Container(
-                            margin: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(color: Colors.green.shade300, shape: BoxShape.circle),
-                            child: Center(child: Text(day.day.toString(), style: const TextStyle(color: Colors.white))),
-                          );
-                        } else if (record.value == BinaryState.skipped.toString()) {
-                          return Container(
-                            margin: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(color: Colors.red.shade200, shape: BoxShape.circle),
-                            child: Center(child: Text(day.day.toString(), style: const TextStyle(color: Colors.white, decoration: TextDecoration.lineThrough))),
-                          );
-                        } else if (record.value is int && record.value > 0) {
-                          return Container(
-                            margin: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(color: Colors.blue.shade200, shape: BoxShape.circle),
-                            child: Center(child: Text(day.day.toString(), style: const TextStyle(color: Colors.white))),
-                          );
-                        }
-                      }
-                      return null;
-                    },
-                  ),
-                ),
-              )
-            ],
+    if (widget.habit.type == HabitType.binary) {
+      if (record != null && record.value == BinaryState.done.toString()) {
+        provider.removeHabitLog(widget.habit.id, day);
+      } else {
+        provider.logHabit(HabitRecord(habitId: widget.habit.id, date: day, value: BinaryState.done.toString()));
+      }
+    } else {
+      final countController = TextEditingController(text: record?.value?.toString() ?? '0');
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('تحديث عداد: ${widget.habit.name}'),
+          content: TextField(
+            controller: countController,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'العدد'),
           ),
-        );
-      },
-    );
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+            ElevatedButton(
+              onPressed: () {
+                final int? count = int.tryParse(countController.text);
+                if (count != null && count >= 0) {
+                  provider.logHabit(HabitRecord(habitId: widget.habit.id, date: day, value: count));
+                }
+                Navigator.pop(context);
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildStatsCard(int current, int best) {
@@ -159,7 +101,7 @@ class HabitDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBarChart(BuildContext context, List<HabitRecord> records, HabitType type) {
+  Widget _buildBarChart(BuildContext context, List<HabitRecord> records, HabitType type, bool isDarkMode) {
     final Map<int, double> monthlyData = {};
     for (var record in records) {
       double value = 0;
@@ -171,7 +113,7 @@ class HabitDetailScreen extends StatelessWidget {
       monthlyData.update(record.date.month, (v) => v + value, ifAbsent: () => value);
     }
 
-    return Container(
+    return SizedBox(
       height: 200,
       child: BarChart(
         BarChartData(
@@ -183,7 +125,7 @@ class HabitDetailScreen extends StatelessWidget {
               barRods: [
                 BarChartRodData(
                   toY: monthlyData[month] ?? 0,
-                  color: Theme.of(context).primaryColor,
+                  color: isDarkMode ? Colors.deepPurple.shade300 : Theme.of(context).primaryColor,
                   width: 15,
                   borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
                 )
@@ -198,11 +140,14 @@ class HabitDetailScreen extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
-                  String text = '';
-                  try {
-                    text = DateFormat('MMM', 'ar_SA').format(DateTime(0, value.toInt()));
-                  } catch (e) { text = '';}
-                  return SideTitleWidget(axisSide: meta.axisSide, child: Text(text, style: const TextStyle(fontSize: 12)));
+                  final month = value.toInt();
+                  final year = DateTime.now().year.toString().substring(2);
+                  final text = '${month.toString().padLeft(2, '0')}.$year';
+                  return SideTitleWidget(
+                      axisSide: meta.axisSide,
+                      space: 4,
+                      child: Text(text, style: const TextStyle(fontSize: 12))
+                  );
                 },
                 reservedSize: 30,
               ),
@@ -212,6 +157,125 @@ class HabitDetailScreen extends StatelessWidget {
           gridData: const FlGridData(show: false),
         ),
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Consumer<AppProvider>(
+      builder: (context, provider, child) {
+        final records = provider.habitRecords.where((r) => r.habitId == widget.habit.id).toList();
+        records.sort((a, b) => a.date.compareTo(b.date));
+
+        int currentStreak = 0;
+        int bestStreak = 0;
+
+        if (widget.habit.type == HabitType.binary) {
+          int tempStreak = 0;
+          if (records.isNotEmpty) {
+            for (int i = 0; i < records.length; i++) {
+              if (records[i].value == BinaryState.done.toString()) {
+                tempStreak++;
+                if (i < records.length - 1) {
+                  final difference = records[i+1].date.difference(records[i].date).inDays;
+                  if (difference > 1) {
+                    if (tempStreak > bestStreak) bestStreak = tempStreak;
+                    tempStreak = 0;
+                  }
+                }
+              } else {
+                if (tempStreak > bestStreak) bestStreak = tempStreak;
+                tempStreak = 0;
+              }
+            }
+          }
+          if (tempStreak > bestStreak) bestStreak = tempStreak;
+
+          DateTime checkDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+          if (records.any((r) => isSameDay(r.date, checkDay) && r.value == BinaryState.done.toString())) {
+            currentStreak = 1;
+            while(true) {
+              checkDay = checkDay.subtract(const Duration(days: 1));
+              if (records.any((r) => isSameDay(r.date, checkDay) && r.value == BinaryState.done.toString())) {
+                currentStreak++;
+              } else {
+                break;
+              }
+            }
+          }
+        }
+
+        return Scaffold(
+          appBar: AppBar(title: Text(widget.habit.name)),
+          body: ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              if (widget.habit.type == HabitType.binary)
+                _buildStatsCard(currentStreak, bestStreak),
+
+              const SizedBox(height: 24),
+              Text('السجل الشهري', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              _buildBarChart(context, records, widget.habit.type, isDarkMode),
+              const SizedBox(height: 24),
+
+              Text('التقويم', style: Theme.of(context).textTheme.titleLarge),
+              Card(
+                margin: const EdgeInsets.only(top: 8),
+                child: TableCalendar(
+                  locale: 'ar_SA',
+                  firstDay: DateTime.utc(DateTime.now().year - 1, DateTime.now().month),
+                  lastDay: DateTime.utc(DateTime.now().year + 1, DateTime.now().month),
+                  focusedDay: _focusedDay,
+                  headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  onDaySelected: (selectedDay, focusedDay) {
+                    setState(() {
+                      _focusedDay = focusedDay;
+                      _selectedDay = selectedDay;
+                    });
+                    _handleDayTap(context, selectedDay);
+                  },
+                  calendarBuilders: CalendarBuilders(
+                    defaultBuilder: (context, day, focusedDay) {
+                      final record = provider.getHabitRecordForDay(widget.habit.id, day);
+                      if (record != null) {
+                        Color? decorationColor;
+                        TextStyle textStyle = TextStyle(color: isDarkMode ? Colors.black87 : Colors.white);
+
+                        if (record.value == BinaryState.done.toString()) {
+                          decorationColor = isDarkMode ? Colors.green.shade300 : Colors.green;
+                        } else if (record.value == BinaryState.skipped.toString()) {
+                          decorationColor = isDarkMode ? Colors.red.shade300 : Colors.red;
+                          textStyle = textStyle.copyWith(decoration: TextDecoration.lineThrough);
+                        } else if (record.value is int && record.value > 0) {
+                          decorationColor = isDarkMode ? Colors.blue.shade300 : Colors.blue;
+                        }
+
+                        if (decorationColor != null) {
+                          return Container(
+                            margin: const EdgeInsets.all(5.0),
+                            decoration: BoxDecoration(
+                              color: decorationColor,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(day.day.toString(), style: textStyle),
+                            ),
+                          );
+                        }
+                      }
+                      return null;
+                    },
+                  ),
+                ),
+              )
+            ],
+          ),
+        );
+      },
     );
   }
 }

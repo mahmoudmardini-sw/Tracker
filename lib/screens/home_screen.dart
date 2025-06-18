@@ -1,11 +1,14 @@
 // lib/screens/home_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 
 import '../providers/app_provider.dart';
 import '../models/skill.dart';
+import '../models/daily_log.dart';
 import '../models/milestone.dart';
 import '../models/habit.dart';
 import '../models/habit_record.dart';
@@ -15,10 +18,8 @@ import 'add_habit_screen.dart';
 import 'daily_log_screen.dart';
 import 'skill_detail_screen.dart';
 import 'settings_screen.dart';
-import 'habit_detail_screen.dart'; // <-- إصلاح: إضافة الاستيراد المفقود
+import 'habit_detail_screen.dart';
 
-// ... HomeScreen Widget ...
-// --- الكود الذي لم يتغير ---
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
   @override
@@ -33,6 +34,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    // NEW: Add a listener to rebuild the widget when the tab changes, to update the FAB's tooltip.
+    _tabController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -49,6 +54,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       appBar: AppBar(
         title: const Text('لوحة الإنجاز'),
         actions: [
+          // NEW: Moved the "Add" button here from the FAB
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: _tabController.index == 0 ? 'إضافة مهارة' : 'إضافة عادة',
+            onPressed: () {
+              if (_tabController.index == 0) {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => AddSkillScreen(categories: _categories.sublist(1)),
+                ));
+              } else {
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => AddHabitScreen()));
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.calendar_today_outlined),
             tooltip: 'سجل الإنجازات',
@@ -88,28 +107,82 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           HabitsTab(),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          if (_tabController.index == 0) {
-            Navigator.of(context).push(MaterialPageRoute(
-              builder: (context) => AddSkillScreen(categories: _categories.sublist(1)),
-            ));
-          } else {
-            Navigator.of(context).push(MaterialPageRoute(builder: (context) => AddHabitScreen()));
-          }
-        },
-        child: const Icon(Icons.add),
-        tooltip: _tabController.index == 0 ? 'إضافة مهارة' : 'إضافة عادة',
-      ),
+      // NEW: The FloatingActionButton has been removed from here.
     );
   }
 }
 
-// ... SkillsTab & MilestoneProgressBar Widgets ...
-// --- الكود الذي لم يتغير ---
 class SkillsTab extends StatelessWidget {
   final List<String> categories;
   const SkillsTab({Key? key, required this.categories}) : super(key: key);
+
+  // NEW: Function to show the dialog for adding progress
+  void _showAddProgressDialog(BuildContext context, Skill skill) {
+    final controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('إضافة تقدم لـ "${skill.name}"'),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*'))],
+              decoration: InputDecoration(
+                labelText: 'الكمية المضافة (${skill.unit})',
+                border: const OutlineInputBorder(),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'الرجاء إدخال قيمة';
+                }
+                if (double.tryParse(value) == null) {
+                  return 'الرجاء إدخال رقم صحيح';
+                }
+                return null;
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState!.validate()) {
+                  final value = double.parse(controller.text);
+                  final provider = Provider.of<AppProvider>(context, listen: false);
+
+                  // Update skill progress
+                  skill.spentValue += value;
+                  provider.updateSkill(skill);
+
+                  // Add a log entry
+                  final log = DailyLog(
+                    id: const Uuid().v4(),
+                    skillId: skill.id,
+                    skillName: skill.name,
+                    value: value,
+                    date: DateTime.now(),
+                  );
+                  provider.addDailyLog(log);
+
+                  Navigator.pop(context);
+                }
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -170,12 +243,23 @@ class SkillsTab extends StatelessWidget {
                         ));
                       },
                       child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: const EdgeInsets.all(12.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(skill.name, style: Theme.of(context).textTheme.titleLarge),
-                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(child: Text(skill.name, style: Theme.of(context).textTheme.titleLarge)),
+                                // NEW: Add progress button
+                                IconButton(
+                                  icon: const Icon(Icons.add_task),
+                                  tooltip: 'إضافة تقدم',
+                                  onPressed: () => _showAddProgressDialog(context, skill),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
                             Text('المنجز: ${skill.spentValue.toStringAsFixed(1)} / ${skill.requiredValue.toStringAsFixed(1)} ${skill.unit}'),
                             const SizedBox(height: 8),
                             MilestoneProgressBar(skill: skill),
@@ -194,6 +278,7 @@ class SkillsTab extends StatelessWidget {
   }
 }
 
+// ... MilestoneProgressBar Widget (no changes) ...
 class MilestoneProgressBar extends StatelessWidget {
   final Skill skill;
   const MilestoneProgressBar({Key? key, required this.skill}) : super(key: key);
@@ -242,47 +327,7 @@ class MilestoneProgressBar extends StatelessWidget {
     );
   }
 }
-
-
-// --- _HabitRow Widget (مكان الخطأ الثالث) ---
-class _HabitRow extends StatelessWidget {
-  final Habit habit;
-  final List<DateTime> recentDays;
-  const _HabitRow({required this.habit, required this.recentDays});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.symmetric(vertical: 5),
-      child: InkWell(
-        // --- هذا هو الإصلاح ---
-        onTap: () {
-          Navigator.push(context, MaterialPageRoute(
-            builder: (context) => HabitDetailScreen(habit: habit),
-          ));
-        },
-        // --- نهاية الإصلاح ---
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: Row(
-            children: [
-              Expanded(child: Text(habit.name, style: Theme.of(context).textTheme.titleMedium)),
-              Row(
-                children: recentDays.map((day) {
-                  return _HabitDayCell(habit: habit, day: day);
-                }).toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ... HabitsTab & _HabitDayCell Widgets ...
-// --- الكود الذي لم يتغير ---
+// ... HabitsTab, _HabitRow, _HabitDayCell Widgets (no changes) ...
 class HabitsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -336,6 +381,40 @@ class HabitsTab extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _HabitRow extends StatelessWidget {
+  final Habit habit;
+  final List<DateTime> recentDays;
+  const _HabitRow({required this.habit, required this.recentDays});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      child: InkWell(
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (context) => HabitDetailScreen(habit: habit),
+          ));
+        },
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          child: Row(
+            children: [
+              Expanded(child: Text(habit.name, style: Theme.of(context).textTheme.titleMedium)),
+              Row(
+                children: recentDays.map((day) {
+                  return _HabitDayCell(habit: habit, day: day);
+                }).toList(),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
