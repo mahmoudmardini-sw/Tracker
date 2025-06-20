@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
+import '../l10n/app_localizations.dart';
 import '../models/habit.dart';
 import '../models/habit_record.dart';
 import '../providers/app_provider.dart';
@@ -27,7 +29,38 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
     _selectedDay = _focusedDay;
   }
 
+  void _showDeleteConfirmationDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(l10n.deleteConfirmationTitle),
+          content: Text(l10n.deleteHabitConfirmation(widget.habit.name)),
+          actions: <Widget>[
+            TextButton(
+              child: Text(l10n.cancel),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+              onPressed: () {
+                Provider.of<AppProvider>(context, listen: false)
+                    .removeHabit(widget.habit.id);
+                Navigator.of(dialogContext).pop();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _handleDayTap(BuildContext context, DateTime day) {
+    final l10n = AppLocalizations.of(context)!;
     final provider = Provider.of<AppProvider>(context, listen: false);
     final record = provider.getHabitRecordForDay(widget.habit.id, day);
 
@@ -49,15 +82,15 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('تحديث عداد: ${widget.habit.name}'),
+          title: Text(l10n.updateCounterFor(widget.habit.name)),
           content: TextField(
             controller: countController,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'العدد'),
+            decoration: InputDecoration(labelText: l10n.theCount), // *** التصحيح هنا ***
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
             ElevatedButton(
               onPressed: () {
                 final int? count = int.tryParse(countController.text);
@@ -66,7 +99,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                 }
                 Navigator.pop(context);
               },
-              child: const Text('حفظ'),
+              child: Text(l10n.save),
             ),
           ],
         ),
@@ -82,6 +115,8 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
         value = 1;
       } else if (type == HabitType.counter && record.value is String) {
         value = double.tryParse(record.value) ?? 0.0;
+      } else if (type == HabitType.counter && record.value is num) {
+        value = (record.value as num).toDouble();
       }
       monthlyData.update(record.date.month, (v) => v + value, ifAbsent: () => value);
     }
@@ -133,6 +168,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
   }
 
   Widget _buildStatsCard(int current, int best) {
+    // This should also be localized if you want to support multiple languages fully
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -141,14 +177,14 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
           children: [
             Column(
               children: [
-                Text('السلسلة الحالية', style: TextStyle(color: Colors.grey.shade600)),
-                Text('$current أيام', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                Text("Current Streak", style: TextStyle(color: Colors.grey.shade600)),
+                Text('$current days', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               ],
             ),
             Column(
               children: [
-                Text('أفضل سلسلة', style: TextStyle(color: Colors.grey.shade600)),
-                Text('$best أيام', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                Text("Best Streak", style: TextStyle(color: Colors.grey.shade600)),
+                Text('$best days', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               ],
             ),
           ],
@@ -159,9 +195,18 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
+        final habitExists = provider.habits.any((h) => h.id == widget.habit.id);
+        if (!habitExists) {
+          return Scaffold(
+            appBar: AppBar(),
+            body: Center(child: Text("This habit has been deleted.")),
+          );
+        }
+
         final records = provider.habitRecords.where((r) => r.habitId == widget.habit.id).toList();
         records.sort((a, b) => a.date.compareTo(b.date));
 
@@ -170,41 +215,46 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
 
         if (widget.habit.type == HabitType.binary) {
           int tempStreak = 0;
-          if (records.isNotEmpty) {
-            for (int i = 0; i < records.length; i++) {
-              if (records[i].value == BinaryState.done.toString()) {
-                tempStreak++;
-                if (i < records.length - 1) {
-                  final difference = records[i+1].date.difference(records[i].date).inDays;
-                  if (difference > 1) {
-                    if (tempStreak > bestStreak) bestStreak = tempStreak;
-                    tempStreak = 0;
-                  }
+          final doneRecords = records.where((r) => r.value == BinaryState.done.toString()).toList();
+          if (doneRecords.isNotEmpty) {
+            for (int i = 0; i < doneRecords.length; i++) {
+              tempStreak++;
+              if (i < doneRecords.length - 1) {
+                final difference = doneRecords[i+1].date.difference(doneRecords[i].date).inDays;
+                if (difference > 1) {
+                  if (tempStreak > bestStreak) bestStreak = tempStreak;
+                  tempStreak = 0;
                 }
-              } else {
-                if (tempStreak > bestStreak) bestStreak = tempStreak;
-                tempStreak = 0;
               }
             }
-          }
-          if (tempStreak > bestStreak) bestStreak = tempStreak;
+            if (tempStreak > bestStreak) bestStreak = tempStreak;
 
-          DateTime checkDay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-          if (records.any((r) => isSameDay(r.date, checkDay) && r.value == BinaryState.done.toString())) {
-            currentStreak = 1;
-            while(true) {
-              checkDay = checkDay.subtract(const Duration(days: 1));
-              if (records.any((r) => isSameDay(r.date, checkDay) && r.value == BinaryState.done.toString())) {
+            DateTime today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+            DateTime yesterday = today.subtract(const Duration(days: 1));
+            bool todayDone = doneRecords.any((r) => isSameDay(r.date, today));
+
+            if(todayDone || doneRecords.any((r) => isSameDay(r.date, yesterday))) {
+              currentStreak = 0;
+              DateTime checkDay = todayDone ? today : yesterday;
+              while(doneRecords.any((r) => isSameDay(r.date, checkDay))) {
                 currentStreak++;
-              } else {
-                break;
+                checkDay = checkDay.subtract(const Duration(days: 1));
               }
             }
           }
         }
 
         return Scaffold(
-          appBar: AppBar(title: Text(widget.habit.name)),
+          appBar: AppBar(
+            title: Text(widget.habit.name),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: l10n.deleteHabitTooltip,
+                onPressed: _showDeleteConfirmationDialog,
+              )
+            ],
+          ),
           body: ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
@@ -212,18 +262,18 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                 _buildStatsCard(currentStreak, bestStreak),
 
               const SizedBox(height: 24),
-              Text('السجل الشهري', style: Theme.of(context).textTheme.titleLarge),
+              Text("Monthly Log", style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               _buildBarChart(context, records, widget.habit.type, isDarkMode),
               const SizedBox(height: 24),
 
-              Text('التقويم', style: Theme.of(context).textTheme.titleLarge),
+              Text("Calendar", style: Theme.of(context).textTheme.titleLarge),
               Card(
                 margin: const EdgeInsets.only(top: 8),
                 child: TableCalendar(
-                  locale: 'ar_SA',
-                  firstDay: DateTime.utc(DateTime.now().year - 1, DateTime.now().month),
-                  lastDay: DateTime.utc(DateTime.now().year + 1, DateTime.now().month),
+                  locale: l10n.localeName,
+                  firstDay: DateTime.utc(DateTime.now().year - 1, 1, 1),
+                  lastDay: DateTime.utc(DateTime.now().year + 1, 12, 31),
                   focusedDay: _focusedDay,
                   headerStyle: const HeaderStyle(formatButtonVisible: false, titleCentered: true),
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
@@ -246,8 +296,11 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                         } else if (record.value == BinaryState.skipped.toString()) {
                           decorationColor = isDarkMode ? Colors.red.shade300 : Colors.red;
                           textStyle = textStyle.copyWith(decoration: TextDecoration.lineThrough);
-                        } else if (record.value is String && (double.tryParse(record.value) ?? 0) > 0) {
-                          decorationColor = isDarkMode ? Colors.blue.shade300 : Colors.blue;
+                        } else {
+                          final count = num.tryParse(record.value.toString());
+                          if(count != null && count > 0) {
+                            decorationColor = isDarkMode ? Colors.blue.shade300 : Colors.blue;
+                          }
                         }
 
                         if (decorationColor != null) {

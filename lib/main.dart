@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/date_symbol_data_local.dart';
-
-// THE FIX: Use a direct relative path instead of the flutter_gen package
 import 'l10n/app_localizations.dart';
 
 import 'providers/app_provider.dart';
