@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../l10n/app_localizations.dart';
 import '../models/skill.dart';
 import '../providers/app_provider.dart';
 
@@ -38,22 +40,60 @@ class _SkillDetailScreenState extends State<SkillDetailScreen> {
         .removeNoteFromSkill(widget.skill.id, index);
   }
 
+  void _showDeleteConfirmationDialog() {
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text(l10n.deleteConfirmationTitle),
+          content: Text(l10n.deleteSkillConfirmation(widget.skill.name)),
+          actions: <Widget>[
+            TextButton(
+              child: Text(l10n.cancel),
+              onPressed: () {
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+            TextButton(
+              child: Text(l10n.delete, style: const TextStyle(color: Colors.red)),
+              onPressed: () {
+                Provider.of<AppProvider>(context, listen: false)
+                    .removeSkill(widget.skill.id);
+                Navigator.of(dialogContext).pop();
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    // نستخدم Consumer ليستمع للتغييرات ويعيد بناء الواجهة عند إضافة/حذف ملاحظة
+    final l10n = AppLocalizations.of(context)!;
+
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
-        // نبحث عن أحدث نسخة من المهارة من الـ Provider
-        final skill = provider.skills.firstWhere((s) => s.id == widget.skill.id);
+        final skill = provider.skills.firstWhere((s) => s.id == widget.skill.id, orElse: () => widget.skill);
 
         return Scaffold(
           appBar: AppBar(
             title: Text(skill.name),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                tooltip: l10n.deleteSkillTooltip,
+                onPressed: _showDeleteConfirmationDialog,
+              )
+            ],
           ),
           body: ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
-              // قسم الأهداف المرحلية (لم يتغير)
               _buildSectionTitle('الأهداف المرحلية'),
               if (skill.milestones.isEmpty)
                 const Padding(
@@ -63,12 +103,18 @@ class _SkillDetailScreenState extends State<SkillDetailScreen> {
               else
                 ...skill.milestones.map((milestone) {
                   bool isAchieved = skill.spentValue >= milestone.value;
-                  return ListTile(/* ... */);
+                  return ListTile(
+                    leading: Icon(
+                      isAchieved ? Icons.check_circle : Icons.flag_circle_outlined,
+                      color: isAchieved ? Colors.green : Theme.of(context).colorScheme.secondary,
+                    ),
+                    title: Text(milestone.description),
+                    trailing: Text('${milestone.value.toStringAsFixed(1)} ${skill.unit}'),
+                  );
                 }),
 
               const Divider(height: 32, thickness: 1),
 
-              // قسم الملاحظات
               _buildSectionTitle('الملاحظات'),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),

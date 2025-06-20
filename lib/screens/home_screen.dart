@@ -363,7 +363,6 @@ class HabitsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Define l10n here to use it for localization
     final l10n = AppLocalizations.of(context)!;
 
     return Consumer<AppProvider>(
@@ -374,7 +373,6 @@ class HabitsTab extends StatelessWidget {
         }).reversed.toList();
 
         if (habits.isEmpty) {
-          // THE FIX IS HERE
           return Center(child: Text(l10n.noHabitsMessage));
         }
 
@@ -464,6 +462,7 @@ class _HabitDayCell extends StatelessWidget {
   const _HabitDayCell({required this.habit, required this.day});
 
   void _handleTap(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final provider = Provider.of<AppProvider>(context, listen: false);
     final record = provider.getHabitRecordForDay(habit.id, day);
 
@@ -478,15 +477,15 @@ class _HabitDayCell extends StatelessWidget {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('تحديث عداد: ${habit.name}'),
+          title: Text(l10n.updateCounterFor(habit.name)),
           content: TextField(
             controller: countController,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'العدد'),
+            decoration: InputDecoration(labelText: l10n.theCount), // *** التصحيح هنا ***
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+            TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
             ElevatedButton(
               onPressed: () {
                 final int? count = int.tryParse(countController.text);
@@ -495,7 +494,7 @@ class _HabitDayCell extends StatelessWidget {
                 }
                 Navigator.pop(context);
               },
-              child: const Text('حفظ'),
+              child: Text(l10n.save),
             ),
           ],
         ),

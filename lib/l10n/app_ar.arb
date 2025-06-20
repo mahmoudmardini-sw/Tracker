@@ -1,15 +1,34 @@
 {
-  "@@locale": "ar",
-  "appTitle": "لوحة الإنجاز",
+  "appTitle": "متتبع المهارات",
   "skillsTab": "المهارات",
   "habitsTab": "العادات",
-  "addSkill": "إضافة مهارة",
-  "addHabit": "إضافة عادة",
+  "addSkill": "أضف مهارة",
+  "addHabit": "أضف عادة",
   "achievementsLog": "سجل الإنجازات",
   "settings": "الإعدادات",
-  "noSkillsMessage": "لا يوجد مهارات لعرضها.",
-  "filter": "فلترة",
-  "completed": "المنجز: {spentValue} / {requiredValue} {unit}",
+  "filter": "تصفية",
+  "all": "الكل",
+  "noSkillsMessage": "لا توجد مهارات بعد. اضغط على زر + لإضافة واحدة!",
+  "addProgressTo": "إضافة تقدم إلى {skillName}",
+  "@addProgressTo": {
+    "placeholders": {
+      "skillName": {
+        "type": "String"
+      }
+    }
+  },
+  "addedAmount": "الكمية المضافة ({unit})",
+  "@addedAmount": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "pleaseEnterValue": "الرجاء إدخال قيمة.",
+  "pleaseEnterNumber": "الرجاء إدخال رقم صحيح.",
+  "save": "حفظ",
+  "completed": "تم إنجاز {spentValue} / {requiredValue} {unit}",
   "@completed": {
     "placeholders": {
       "spentValue": {},
@@ -17,39 +36,46 @@
       "unit": {}
     }
   },
-  "addProgressTo": "إضافة تقدم لـ \"{skillName}\"",
-  "@addProgressTo": {
-    "placeholders": {
-      "skillName": {}
-    }
-  },
-  "addProgress": "إضافة تقدم",
-  "addedAmount": "الكمية المضافة ({unit})",
-  "@addedAmount": {
-    "placeholders": {
-      "unit": {}
-    }
-  },
-  "pleaseEnterValue": "الرجاء إدخال قيمة",
-  "pleaseEnterNumber": "الرجاء إدخال رقم صحيح",
-  "cancel": "إلغاء",
-  "save": "حفظ",
+  "addProgress": "أضف تقدماً",
+  "noHabitsMessage": "لا توجد عادات بعد. اضغط على زر + لإضافة واحدة!",
   "nightMode": "الوضع الليلي",
-  "enableDarkMode": "تفعيل الثيم الداكن للتطبيق",
-  "defaultUnit": "الوحدة الافتراضية للمهارات الجديدة",
-  "currentUnit": "الوحدة الحالية: {unit}",
+  "enableDarkMode": "فعل الوضع الداكن للتطبيق",
+  "language": "اللغة",
+  "defaultUnit": "الوحدة الافتراضية",
+  "currentUnit": "الحالية: {unit}",
   "@currentUnit": {
     "placeholders": {
       "unit": {}
     }
   },
   "showCompletedSkills": "إظهار المهارات المكتملة",
-  "language": "اللغة",
   "deleteAllData": "حذف جميع البيانات",
-  "deleteAllDataSub": "حذف جميع المهارات والعادات والسجلات بشكل دائم",
+  "deleteAllDataSub": "هذا الإجراء لا يمكن التراجع عنه",
+  "deleteAllDataConfirmation": "هل أنت متأكد من حذف كل بيانات التطبيق؟ لا يمكن التراجع عن هذا الأمر.",
   "deleteConfirmationTitle": "تأكيد الحذف",
-  "deleteAllDataConfirmation": "هل أنت متأكد من رغبتك في حذف جميع البيانات؟ لا يمكن التراجع عن هذا الإجراء.",
+  "deleteSkillConfirmation": "هل أنت متأكد من رغبتك في حذف المهارة ''{skillName}''؟ سيتم حذف جميع السجلات المرتبطة بها أيضاً.",
+  "@deleteSkillConfirmation": {
+    "placeholders": {
+      "skillName": {}
+    }
+  },
+  "deleteHabitConfirmation": "هل أنت متأكد من رغبتك في حذف العادة ''{habitName}''؟ سيتم حذف جميع سجلاتها أيضاً.",
+  "@deleteHabitConfirmation": {
+    "placeholders": {
+      "habitName": {}
+    }
+  },
   "delete": "حذف",
-  "all": "All",
-  "noHabitsMessage": "لا توجد عادات بعد. قم بإضافة عادة جديدة!"
+  "cancel": "إلغاء",
+  "theCount": "العدد",
+  "deleteSkillTooltip": "حذف المهارة",
+  "deleteHabitTooltip": "حذف العادة",
+  "updateCounterFor": "تحديث عداد: {habitName}",
+  "@updateCounterFor": {
+    "placeholders": {
+      "habitName": {
+        "type": "String"
+      }
+    }
+  }
 }
