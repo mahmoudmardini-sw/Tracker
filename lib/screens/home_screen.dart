@@ -1,5 +1,3 @@
-// lib/screens/home_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -30,7 +28,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _categories = ['الكل', 'القرآن', 'رياضة', 'Computer Science', 'لغات', 'أخرى'];
+  final List<String> _categories = ['الكل']; // Removed static categories, will be loaded from provider
 
   bool _isFilterVisible = false;
 
@@ -76,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             onPressed: () {
               if (_tabController.index == 0) {
                 Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => AddSkillScreen(categories: _categories.sublist(1)),
+                  builder: (context) => const AddSkillScreen(),
                 ));
               } else {
                 Navigator.of(context).push(MaterialPageRoute(builder: (context) => const AddHabitScreen()));
@@ -119,7 +117,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
         controller: _tabController,
         children: [
           SkillsTab(
-            categories: _categories,
             isFilterVisible: _isFilterVisible,
           ),
           const HabitsTab(),
@@ -130,12 +127,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 }
 
 class SkillsTab extends StatelessWidget {
-  final List<String> categories;
   final bool isFilterVisible;
 
   const SkillsTab({
     super.key,
-    required this.categories,
     required this.isFilterVisible,
   });
 
@@ -204,12 +199,12 @@ class SkillsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final originalCategories = categories;
-    final localizedCategories = [l10n.all, ...originalCategories.sublist(1)];
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         List<Skill> skillsToDisplay = provider.skills;
+        final skillCategories = ['الكل', ...provider.skillCategories];
 
         if (provider.selectedCategory != 'الكل') {
           skillsToDisplay = skillsToDisplay.where((s) => s.category == provider.selectedCategory).toList();
@@ -230,9 +225,8 @@ class SkillsTab extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
-                  children: localizedCategories.map((category) {
-                    final originalCategoryValue = (category == l10n.all) ? 'الكل' : category;
-                    final isSelected = provider.selectedCategory == originalCategoryValue;
+                  children: skillCategories.map((category) {
+                    final isSelected = provider.selectedCategory == category;
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4.0),
                       child: ChoiceChip(
@@ -240,7 +234,7 @@ class SkillsTab extends StatelessWidget {
                         selected: isSelected,
                         onSelected: (selected) {
                           if (selected) {
-                            provider.setSelectedCategory(originalCategoryValue);
+                            provider.setSelectedCategory(category);
                           }
                         },
                       ),
@@ -259,7 +253,7 @@ class SkillsTab extends StatelessWidget {
                   final skill = skillsToDisplay[index];
                   return Card(
                     clipBehavior: Clip.antiAlias,
-                    margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
                     child: InkWell(
                       onTap: () {
                         Navigator.push(context, MaterialPageRoute(
@@ -267,14 +261,21 @@ class SkillsTab extends StatelessWidget {
                         ));
                       },
                       child: Padding(
-                        padding: const EdgeInsets.all(12.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Expanded(child: Text(skill.name, style: Theme.of(context).textTheme.titleLarge)),
+                                Expanded(
+                                  child: Text(
+                                    skill.name,
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      color: colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
                                 IconButton(
                                   icon: const Icon(Icons.add_task),
                                   tooltip: l10n.addProgress,
@@ -283,7 +284,12 @@ class SkillsTab extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(l10n.completed(skill.spentValue.toStringAsFixed(1), skill.requiredValue.toStringAsFixed(1), skill.unit)),
+                            Text(
+                              l10n.completed(skill.spentValue.toStringAsFixed(1), skill.requiredValue.toStringAsFixed(1), skill.unit),
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: colorScheme.onSurface.withOpacity(0.7),
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             MilestoneProgressBar(skill: skill),
                           ],
@@ -306,6 +312,7 @@ class MilestoneProgressBar extends StatelessWidget {
   const MilestoneProgressBar({super.key, required this.skill});
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return LayoutBuilder(
       builder: (context, constraints) {
         return Stack(
@@ -315,7 +322,7 @@ class MilestoneProgressBar extends StatelessWidget {
             Container(
               height: 8,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: colorScheme.primary.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: FractionallySizedBox(
@@ -323,7 +330,7 @@ class MilestoneProgressBar extends StatelessWidget {
                 widthFactor: skill.progress,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: skill.progress == 1.0 ? Colors.green : Theme.of(context).primaryColor,
+                    color: skill.progress == 1.0 ? Colors.green : colorScheme.primary,
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -364,6 +371,7 @@ class HabitsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
@@ -376,14 +384,23 @@ class HabitsTab extends StatelessWidget {
           return Center(child: Text(l10n.noHabitsMessage));
         }
 
-        final locale = Localizations.localeOf(context).languageCode;
+        // --- التغيير الكبير هنا: تجميع العادات حسب الصنف ---
+        final Map<String, List<Habit>> groupedHabits = {};
+        for (var habit in habits) {
+          (groupedHabits[habit.category] ??= []).add(habit);
+        }
+        final sortedCategories = groupedHabits.keys.toList()..sort();
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(right: 8.0, left: 16.0),
+        return ListView.builder(
+          padding: const EdgeInsets.all(8.0),
+          // +1 for the header row
+          itemCount: sortedCategories.length + 1,
+          itemBuilder: (context, index) {
+            // The first item is the header for the days
+            if (index == 0) {
+              final locale = Localizations.localeOf(context).languageCode;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0, left: 16.0, bottom: 4),
                 child: Row(
                   children: [
                     const Expanded(child: SizedBox.shrink()),
@@ -402,24 +419,44 @@ class HabitsTab extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-              const Divider(),
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: habits.length,
-                itemBuilder: (context, index) {
-                  final habit = habits[index];
-                  return _HabitRow(habit: habit, recentDays: recentDays);
-                },
-              ),
-            ],
-          ),
+              );
+            }
+
+            // Other items are the categories and their habits
+            final categoryIndex = index - 1;
+            final category = sortedCategories[categoryIndex];
+            final habitsInCategory = groupedHabits[category]!;
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (categoryIndex > 0) const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Row(
+                    children: [
+                      Text(
+                        category,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(child: Divider(thickness: 0.5)),
+                    ],
+                  ),
+                ),
+                ...habitsInCategory.map((habit) => _HabitRow(habit: habit, recentDays: recentDays)),
+              ],
+            );
+          },
         );
       },
     );
   }
 }
+
 
 class _HabitRow extends StatelessWidget {
   final Habit habit;
@@ -428,9 +465,10 @@ class _HabitRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       clipBehavior: Clip.antiAlias,
-      margin: const EdgeInsets.symmetric(vertical: 5),
+      margin: const EdgeInsets.symmetric(vertical: 3),
       child: InkWell(
         onTap: () {
           Navigator.push(context, MaterialPageRoute(
@@ -438,10 +476,17 @@ class _HabitRow extends StatelessWidget {
           ));
         },
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
           child: Row(
             children: [
-              Expanded(child: Text(habit.name, style: Theme.of(context).textTheme.titleMedium)),
+              Expanded(
+                child: Text(
+                  habit.name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+              ),
               Row(
                 children: recentDays.map((day) {
                   return _HabitDayCell(habit: habit, day: day);
@@ -482,7 +527,7 @@ class _HabitDayCell extends StatelessWidget {
             controller: countController,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: InputDecoration(labelText: l10n.theCount), // *** التصحيح هنا ***
+            decoration: InputDecoration(labelText: l10n.theCount),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),

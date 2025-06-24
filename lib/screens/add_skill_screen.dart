@@ -6,8 +6,7 @@ import '../models/milestone.dart';
 import '../providers/app_provider.dart';
 
 class AddSkillScreen extends StatefulWidget {
-  final List<String> categories;
-  const AddSkillScreen({Key? key, required this.categories}) : super(key: key);
+  const AddSkillScreen({Key? key}) : super(key: key);
 
   @override
   _AddSkillScreenState createState() => _AddSkillScreenState();
@@ -18,6 +17,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   final _nameController = TextEditingController();
   final _requiredController = TextEditingController();
   final _spentController = TextEditingController();
+  final _categoryController = TextEditingController();
 
   final List<TextEditingController> _milestoneValueControllers = [];
   final List<TextEditingController> _milestoneDescControllers = [];
@@ -27,14 +27,17 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
     'دقيقة', 'كيلو متر', 'خطوة', 'جزء', 'فصل', 'مقال',
   ];
   late String _selectedUnit;
-  late String _selectedCategory;
+  String? _selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    _selectedUnit = Provider.of<AppProvider>(context, listen: false).defaultUnit;
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    _selectedUnit = provider.defaultUnit;
+    if (provider.skillCategories.isNotEmpty) {
+      _selectedCategory = provider.skillCategories.first;
+    }
     _spentController.text = '0.0';
-    _selectedCategory = widget.categories.isNotEmpty ? widget.categories.first : 'أخرى';
   }
 
   @override
@@ -42,6 +45,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
     _nameController.dispose();
     _requiredController.dispose();
     _spentController.dispose();
+    _categoryController.dispose();
     for (var controller in _milestoneValueControllers) {
       controller.dispose();
     }
@@ -49,6 +53,38 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  void _showAddCategoryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('إضافة صنف جديد'),
+        content: TextField(
+          controller: _categoryController,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'اسم الصنف'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () {
+              if (_categoryController.text.trim().isNotEmpty) {
+                final provider = Provider.of<AppProvider>(context, listen: false);
+                final newCategory = _categoryController.text.trim();
+                provider.addSkillCategory(newCategory);
+                setState(() {
+                  _selectedCategory = newCategory;
+                });
+                _categoryController.clear();
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('إضافة'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addMilestoneField() {
@@ -68,7 +104,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   }
 
   void _submit() {
-    if (_formKey.currentState!.validate()) {
+    if (_formKey.currentState!.validate() && _selectedCategory != null) {
       List<Milestone> milestones = [];
       for (int i = 0; i < _milestoneValueControllers.length; i++) {
         final value = double.tryParse(_milestoneValueControllers[i].text);
@@ -80,12 +116,12 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
       milestones.sort((a, b) => a.value.compareTo(b.value));
 
       final newSkill = Skill(
-        id: Uuid().v4(),
+        id: const Uuid().v4(),
         name: _nameController.text.trim(),
         requiredValue: double.parse(_requiredController.text),
         spentValue: double.tryParse(_spentController.text) ?? 0.0,
         unit: _selectedUnit,
-        category: _selectedCategory,
+        category: _selectedCategory!,
         milestones: milestones,
       );
 
@@ -96,6 +132,8 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+
     return Scaffold(
       appBar: AppBar(title: const Text('إضافة مهارة جديدة')),
       body: Form(
@@ -109,11 +147,25 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
               validator: (v) => v == null || v.trim().isEmpty ? 'لا يمكن ترك الاسم فارغاً' : null,
             ),
             const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _selectedCategory,
-              decoration: const InputDecoration(labelText: 'التصنيف', border: OutlineInputBorder()),
-              items: widget.categories.map((String category) => DropdownMenuItem<String>(value: category, child: Text(category))).toList(),
-              onChanged: (newValue) => setState(() => _selectedCategory = newValue!),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedCategory,
+                    validator: (v) => v == null ? 'الرجاء اختيار صنف' : null,
+                    decoration: const InputDecoration(labelText: 'الصنف', border: OutlineInputBorder()),
+                    items: provider.skillCategories
+                        .map((String category) => DropdownMenuItem<String>(value: category, child: Text(category)))
+                        .toList(),
+                    onChanged: (newValue) => setState(() => _selectedCategory = newValue),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  onPressed: _showAddCategoryDialog,
+                  tooltip: 'إضافة صنف جديد',
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(

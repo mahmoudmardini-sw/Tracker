@@ -7,7 +7,9 @@ class AppConstants {
   static const String selectedCategoryKey = 'selected_category';
   static const String habitsDataKey = 'habits_data';
   static const String habitRecordsDataKey = 'habit_records_data';
-
-  // NEW Key for language
   static const String languageCodeKey = 'language_code';
+
+  // <-- تمت إضافة مفاتيح جديدة لحفظ قوائم الأصناف -->
+  static const String skillCategoriesKey = 'skill_categories';
+  static const String habitCategoriesKey = 'habit_categories';
 }
