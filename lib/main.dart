@@ -33,15 +33,17 @@ class SkillTrackerApp extends StatelessWidget {
       locale: provider.appLocale,
       theme: ThemeData(
         brightness: Brightness.light,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: Colors.teal,
           brightness: Brightness.dark,
         ),
+        // *** التعديل هنا: أضفنا هذا السطر لتفتيح الخلفية ***
+        scaffoldBackgroundColor: Colors.grey[850],
         useMaterial3: true,
       ),
       themeMode: provider.themeMode,

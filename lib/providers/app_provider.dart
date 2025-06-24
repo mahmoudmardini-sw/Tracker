@@ -1,5 +1,3 @@
-// lib/providers/app_provider.dart
-
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -17,12 +15,16 @@ class AppProvider with ChangeNotifier {
   String _defaultUnit = 'ساعة';
   bool _showCompletedSkills = true;
   String _selectedCategory = 'الكل';
-  Locale _appLocale = const Locale('en'); // Default to English
+  Locale _appLocale = const Locale('en');
 
   List<Skill> _skills = [];
   List<DailyLog> _dailyLogs = [];
   List<Habit> _habits = [];
   List<HabitRecord> _habitRecords = [];
+
+  // قوائم ديناميكية جديدة للأصناف
+  List<String> _skillCategories = [];
+  List<String> _habitCategories = [];
 
   AppProvider(this.prefs);
 
@@ -36,6 +38,10 @@ class AppProvider with ChangeNotifier {
   List<HabitRecord> get habitRecords => _habitRecords;
   Locale get appLocale => _appLocale;
 
+  // Getters للوصول إلى قوائم الأصناف
+  List<String> get skillCategories => _skillCategories;
+  List<String> get habitCategories => _habitCategories;
+
   void loadAllData() {
     final themeString = prefs.getString(AppConstants.themeModeKey) ?? ThemeMode.system.toString();
     _themeMode = ThemeMode.values.firstWhere((e) => e.toString() == themeString, orElse: () => ThemeMode.system);
@@ -46,11 +52,33 @@ class AppProvider with ChangeNotifier {
     _defaultUnit = prefs.getString(AppConstants.defaultUnitKey) ?? 'ساعة';
     _showCompletedSkills = prefs.getBool(AppConstants.showCompletedSkillsKey) ?? true;
     _selectedCategory = prefs.getString(AppConstants.selectedCategoryKey) ?? 'الكل';
+
+    // تحميل الأصناف من الذاكرة أو استخدام قائمة افتراضية
+    _skillCategories = prefs.getStringList(AppConstants.skillCategoriesKey) ?? ['القرآن', 'رياضة', 'Computer Science', 'لغات', 'أخرى'];
+    _habitCategories = prefs.getStringList(AppConstants.habitCategoriesKey) ?? ['صحة', 'دين', 'تطوير الذات', 'أخرى'];
+
     _loadSkills();
     _loadDailyLogs();
     _loadHabits();
     _loadHabitRecords();
     notifyListeners();
+  }
+
+  // دوال جديدة لإضافة الأصناف وحفظها
+  Future<void> addSkillCategory(String category) async {
+    if (!_skillCategories.contains(category)) {
+      _skillCategories.add(category);
+      await prefs.setStringList(AppConstants.skillCategoriesKey, _skillCategories);
+      notifyListeners();
+    }
+  }
+
+  Future<void> addHabitCategory(String category) async {
+    if (!_habitCategories.contains(category)) {
+      _habitCategories.add(category);
+      await prefs.setStringList(AppConstants.habitCategoriesKey, _habitCategories);
+      notifyListeners();
+    }
   }
 
   Future<void> _loadSkills() async {

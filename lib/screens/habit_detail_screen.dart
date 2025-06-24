@@ -87,7 +87,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
             controller: countController,
             keyboardType: TextInputType.number,
             autofocus: true,
-            decoration: InputDecoration(labelText: l10n.theCount), // *** التصحيح هنا ***
+            decoration: InputDecoration(labelText: l10n.theCount),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
@@ -133,7 +133,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
               barRods: [
                 BarChartRodData(
                   toY: monthlyData[month] ?? 0,
-                  color: isDarkMode ? Colors.deepPurple.shade300 : Theme.of(context).primaryColor,
+                  color: isDarkMode ? Colors.teal.shade300 : Theme.of(context).primaryColor,
                   width: 15,
                   borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4)),
                 )
@@ -147,14 +147,19 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 30,
+                reservedSize: 48, // <-- هذا هو السطر الذي تم تعديله لإصلاح الخطأ
                 getTitlesWidget: (double value, TitleMeta meta) {
                   final month = value.toInt();
                   final year = DateTime.now().year.toString().substring(2);
-                  final text = '${month.toString().padLeft(2, '0')}.$year';
+                  final text = Column(
+                    children: [
+                      Text(month.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 12)),
+                      Text(year, style: const TextStyle(fontSize: 10)),
+                    ],
+                  );
                   return Padding(
                     padding: const EdgeInsets.only(top: 4.0),
-                    child: Text(text, style: const TextStyle(fontSize: 12)),
+                    child: text,
                   );
                 },
               ),
@@ -203,7 +208,7 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
         if (!habitExists) {
           return Scaffold(
             appBar: AppBar(),
-            body: Center(child: Text("This habit has been deleted.")),
+            body: const Center(child: Text("This habit has been deleted.")),
           );
         }
 
@@ -289,7 +294,10 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                       final record = provider.getHabitRecordForDay(widget.habit.id, day);
                       if (record != null) {
                         Color? decorationColor;
-                        TextStyle textStyle = TextStyle(color: isDarkMode ? Colors.black87 : Colors.white);
+                        TextStyle textStyle = TextStyle(
+                          color: isDarkMode ? Colors.black87 : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        );
 
                         if (record.value == BinaryState.done.toString()) {
                           decorationColor = isDarkMode ? Colors.green.shade300 : Colors.green;
@@ -300,6 +308,19 @@ class _HabitDetailScreenState extends State<HabitDetailScreen> {
                           final count = num.tryParse(record.value.toString());
                           if(count != null && count > 0) {
                             decorationColor = isDarkMode ? Colors.blue.shade300 : Colors.blue;
+                            return Container(
+                              margin: const EdgeInsets.all(5.0),
+                              decoration: BoxDecoration(
+                                color: decorationColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  record.value.toString(),
+                                  style: textStyle.copyWith(fontSize: 12),
+                                ),
+                              ),
+                            );
                           }
                         }
 
