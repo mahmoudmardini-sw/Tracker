@@ -49,19 +49,60 @@ class AppProvider with ChangeNotifier {
     final languageCode = prefs.getString(AppConstants.languageCodeKey) ?? 'en';
     _appLocale = Locale(languageCode);
 
-    _defaultUnit = prefs.getString(AppConstants.defaultUnitKey) ?? 'ساعة';
+    _defaultUnit = prefs.getString(AppConstants.defaultUnitKey) ?? (languageCode == 'ar' ? 'ساعة' : 'Hour');
     _showCompletedSkills = prefs.getBool(AppConstants.showCompletedSkillsKey) ?? true;
-    _selectedCategory = prefs.getString(AppConstants.selectedCategoryKey) ?? 'الكل';
+    _selectedCategory = prefs.getString(AppConstants.selectedCategoryKey) ?? (languageCode == 'ar' ? 'الكل' : 'All');
 
-    // تحميل الأصناف من الذاكرة أو استخدام قائمة افتراضية
-    _skillCategories = prefs.getStringList(AppConstants.skillCategoriesKey) ?? ['القرآن', 'رياضة', 'Computer Science', 'لغات', 'أخرى'];
-    _habitCategories = prefs.getStringList(AppConstants.habitCategoriesKey) ?? ['صحة', 'دين', 'تطوير الذات', 'أخرى'];
+    // تحديد الأصناف الافتراضية بناءً على اللغة الحالية
+    final List<String> defaultSkillCategories = languageCode == 'ar'
+        ? ['القرآن', 'رياضة', 'علوم الحاسوب', 'لغات', 'أخرى']
+        : ['Quran', 'Sports', 'Computer Science', 'Languages', 'Other'];
+
+    final List<String> defaultHabitCategories = languageCode == 'ar'
+        ? ['صحة', 'دين', 'تطوير الذات', 'أخرى']
+        : ['Health', 'Religion', 'Self Development', 'Other'];
+
+    // تحميل الأصناف من الذاكرة أو استخدام القائمة الافتراضية المناسبة للغة
+    _skillCategories = prefs.getStringList(AppConstants.skillCategoriesKey) ?? defaultSkillCategories;
+    _habitCategories = prefs.getStringList(AppConstants.habitCategoriesKey) ?? defaultHabitCategories;
 
     _loadSkills();
     _loadDailyLogs();
     _loadHabits();
     _loadHabitRecords();
     notifyListeners();
+  }
+
+  // دالة لترجمة الأصناف الافتراضية عند تغيير اللغة
+  void _translateDefaultCategories(String oldLang, String newLang) {
+    if (oldLang == newLang) return;
+
+    // قاموس للكلمات الافتراضية
+    Map<String, String> arToEn = {
+      'القرآن': 'Quran', 'رياضة': 'Sports', 'علوم الحاسوب': 'Computer Science',
+      'لغات': 'Languages', 'أخرى': 'Other', 'صحة': 'Health',
+      'دين': 'Religion', 'تطوير الذات': 'Self Development', 'الكل': 'All'
+    };
+
+    // عكس القاموس (من إنجليزي لعربي)
+    Map<String, String> enToAr = arToEn.map((k, v) => MapEntry(v, k));
+
+    // تحديد القاموس المطلوب بناءً على اللغة الجديدة
+    Map<String, String> currentMap = newLang == 'en' ? arToEn : enToAr;
+
+    // تحديث القوائم
+    _skillCategories = _skillCategories.map((c) => currentMap[c] ?? c).toList();
+    _habitCategories = _habitCategories.map((c) => currentMap[c] ?? c).toList();
+
+    // تحديث الصنف المختار حالياً (مثل: الكل / All)
+    if (currentMap.containsKey(_selectedCategory)) {
+      _selectedCategory = currentMap[_selectedCategory]!;
+      prefs.setString(AppConstants.selectedCategoryKey, _selectedCategory);
+    }
+
+    // حفظ التغييرات في الذاكرة
+    prefs.setStringList(AppConstants.skillCategoriesKey, _skillCategories);
+    prefs.setStringList(AppConstants.habitCategoriesKey, _habitCategories);
   }
 
   // دوال جديدة لإضافة الأصناف وحفظها
@@ -124,8 +165,13 @@ class AppProvider with ChangeNotifier {
   }
 
   Future<void> changeLanguage(Locale newLocale) async {
+    String oldLang = _appLocale.languageCode; // حفظ اللغة القديمة
     _appLocale = newLocale;
     await prefs.setString(AppConstants.languageCodeKey, newLocale.languageCode);
+
+    // استدعاء دالة الترجمة لتغيير الأصناف فوراً
+    _translateDefaultCategories(oldLang, newLocale.languageCode);
+
     notifyListeners();
   }
 

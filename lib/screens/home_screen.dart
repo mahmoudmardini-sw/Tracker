@@ -7,7 +7,6 @@ import '../l10n/app_localizations.dart';
 
 import '../providers/app_provider.dart';
 import '../models/skill.dart';
-import '../models/milestone.dart';
 import '../models/daily_log.dart';
 import '../models/habit.dart';
 import '../models/habit_record.dart';
@@ -28,8 +27,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _categories = ['الكل']; // Removed static categories, will be loaded from provider
-
   bool _isFilterVisible = false;
 
   @override
@@ -204,9 +201,11 @@ class SkillsTab extends StatelessWidget {
     return Consumer<AppProvider>(
       builder: (context, provider, child) {
         List<Skill> skillsToDisplay = provider.skills;
-        final skillCategories = ['الكل', ...provider.skillCategories];
 
-        if (provider.selectedCategory != 'الكل') {
+        final allWord = provider.appLocale.languageCode == 'ar' ? 'الكل' : 'All';
+        final skillCategories = [allWord, ...provider.skillCategories];
+
+        if (provider.selectedCategory != allWord) {
           skillsToDisplay = skillsToDisplay.where((s) => s.category == provider.selectedCategory).toList();
         }
         if (!provider.showCompletedSkills) {
@@ -287,7 +286,8 @@ class SkillsTab extends StatelessWidget {
                             Text(
                               l10n.completed(skill.spentValue.toStringAsFixed(1), skill.requiredValue.toStringAsFixed(1), skill.unit),
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface.withOpacity(0.7),
+                                // تم استبدال withOpacity بـ withValues لتجنب التحذيرات
+                                color: colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -322,7 +322,8 @@ class MilestoneProgressBar extends StatelessWidget {
             Container(
               height: 8,
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.2),
+                // تم استبدال withOpacity بـ withValues لتجنب التحذيرات
+                color: colorScheme.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: FractionallySizedBox(
@@ -384,7 +385,6 @@ class HabitsTab extends StatelessWidget {
           return Center(child: Text(l10n.noHabitsMessage));
         }
 
-        // --- التغيير الكبير هنا: تجميع العادات حسب الصنف ---
         final Map<String, List<Habit>> groupedHabits = {};
         for (var habit in habits) {
           (groupedHabits[habit.category] ??= []).add(habit);
@@ -393,10 +393,8 @@ class HabitsTab extends StatelessWidget {
 
         return ListView.builder(
           padding: const EdgeInsets.all(8.0),
-          // +1 for the header row
           itemCount: sortedCategories.length + 1,
           itemBuilder: (context, index) {
-            // The first item is the header for the days
             if (index == 0) {
               final locale = Localizations.localeOf(context).languageCode;
               return Padding(
@@ -422,7 +420,6 @@ class HabitsTab extends StatelessWidget {
               );
             }
 
-            // Other items are the categories and their habits
             final categoryIndex = index - 1;
             final category = sortedCategories[categoryIndex];
             final habitsInCategory = groupedHabits[category]!;
@@ -456,7 +453,6 @@ class HabitsTab extends StatelessWidget {
     );
   }
 }
-
 
 class _HabitRow extends StatelessWidget {
   final Habit habit;

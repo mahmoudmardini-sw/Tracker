@@ -59,23 +59,31 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
     return _eventsByDay[DateTime.utc(day.year, day.month, day.day)] ?? [];
   }
 
-  String _getHabitStatus(HabitRecord record) {
+  // تمرير متغير isAr لمعرفة اللغة الحالية وتغيير حالة العادة
+  String _getHabitStatus(HabitRecord record, bool isAr) {
     if (record.value is String) {
-      if (record.value == BinaryState.done.toString()) return "تم الإنجاز";
-      if (record.value == BinaryState.skipped.toString()) return "تم التخطي";
+      if (record.value == BinaryState.done.toString()) return isAr ? "تم الإنجاز" : "Done";
+      if (record.value == BinaryState.skipped.toString()) return isAr ? "تم التخطي" : "Skipped";
     }
-    if (record.value is int) return "العدد: ${record.value}";
-    return "غير مسجل";
+    // التحقق من العدد
+    if (record.value is int || int.tryParse(record.value.toString()) != null) {
+      return isAr ? "العدد: ${record.value}" : "Count: ${record.value}";
+    }
+    return isAr ? "غير مسجل" : "Not recorded";
   }
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+    final isAr = provider.appLocale.languageCode == 'ar';
+    final localeString = isAr ? 'ar' : 'en'; // تحديد لغة التقويم والوقت
+
     return Scaffold(
-      appBar: AppBar(title: const Text('السجل اليومي الموحد')),
+      appBar: AppBar(title: Text(isAr ? 'السجل اليومي الموحد' : 'Unified Daily Log')),
       body: Column(
         children: [
           TableCalendar<dynamic>(
-            locale: 'ar_SA',
+            locale: localeString, // تغيير لغة التقويم تلقائياً (أسماء الأشهر والأيام)
             firstDay: DateTime.utc(2020, 1, 1),
             lastDay: DateTime.now().add(const Duration(days: 365)),
             focusedDay: _focusedDay,
@@ -98,7 +106,7 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
               valueListenable: _selectedEvents,
               builder: (context, events, _) {
                 if (events.isEmpty) {
-                  return const Center(child: Text('لا توجد سجلات لهذا اليوم.'));
+                  return Center(child: Text(isAr ? 'لا توجد سجلات لهذا اليوم.' : 'No records for this day.'));
                 }
 
                 events.sort((a, b) {
@@ -112,24 +120,33 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
                   itemBuilder: (context, index) {
                     final event = events[index];
                     if (event is DailyLog) {
-                      final skillUnit = widget.skills.firstWhere((s) => s.id == event.skillId, orElse: () => Skill(id:'', name:'', requiredValue:0, unit: '')).unit;
+                      final skillUnit = widget.skills.firstWhere(
+                              (s) => s.id == event.skillId,
+                          orElse: () => Skill(id:'', name:'', requiredValue:0, unit: '')
+                      ).unit;
                       return Card(
                         child: ListTile(
                           leading: const Icon(Icons.auto_awesome, color: Colors.amber),
                           title: Text(event.skillName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text("إنجاز: ${event.value.toStringAsFixed(1)} $skillUnit"),
-                          trailing: Text(DateFormat.jm('ar_SA').format(event.date)),
+                          subtitle: Text(isAr
+                              ? "إنجاز: ${event.value.toStringAsFixed(1)} $skillUnit"
+                              : "Progress: ${event.value.toStringAsFixed(1)} $skillUnit"
+                          ),
+                          trailing: Text(DateFormat.jm(localeString).format(event.date)), // تغيير تنسيق الوقت ليدعم AM/PM أو ص/م
                         ),
                       );
                     } else if (event is HabitRecord) {
                       final provider = Provider.of<AppProvider>(context, listen:false);
-                      final habit = provider.habits.firstWhere((h) => h.id == event.habitId, orElse: () => Habit(id:'', name: 'عادة محذوفة', type: HabitType.binary));
+                      final habit = provider.habits.firstWhere(
+                              (h) => h.id == event.habitId,
+                          orElse: () => Habit(id:'', name: isAr ? 'عادة محذوفة' : 'Deleted Habit', type: HabitType.binary)
+                      );
                       return Card(
                         child: ListTile(
                           leading: Icon(Icons.repeat_on_rounded, color: Colors.blue.shade300),
                           title: Text(habit.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(_getHabitStatus(event)),
-                          trailing: Text(DateFormat.jm('ar_SA').format(event.date)),
+                          subtitle: Text(_getHabitStatus(event, isAr)), // استخدام دالة الحالة المترجمة
+                          trailing: Text(DateFormat.jm(localeString).format(event.date)), // تغيير تنسيق الوقت
                         ),
                       );
                     }

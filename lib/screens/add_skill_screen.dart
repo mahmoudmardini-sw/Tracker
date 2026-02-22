@@ -22,10 +22,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   final List<TextEditingController> _milestoneValueControllers = [];
   final List<TextEditingController> _milestoneDescControllers = [];
 
-  final List<String> _units = [
-    'ساعة', 'صفحة', 'سورة', 'كتاب', 'جلسة تدريبية', 'تكرار', 'مجموعة',
-    'دقيقة', 'كيلو متر', 'خطوة', 'جزء', 'فصل', 'مقال',
-  ];
+  late List<String> _units;
   late String _selectedUnit;
   String? _selectedCategory;
 
@@ -33,7 +30,22 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   void initState() {
     super.initState();
     final provider = Provider.of<AppProvider>(context, listen: false);
-    _selectedUnit = provider.defaultUnit;
+
+    final isAr = provider.appLocale.languageCode == 'ar';
+    _units = isAr ? [
+      'ساعة', 'صفحة', 'سورة', 'كتاب', 'جلسة تدريبية', 'تكرار', 'مجموعة',
+      'دقيقة', 'كيلو متر', 'خطوة', 'جزء', 'فصل', 'مقال',
+    ] : [
+      'Hour', 'Page', 'Surah', 'Book', 'Session', 'Repetition', 'Set',
+      'Minute', 'Kilometer', 'Step', 'Part', 'Chapter', 'Article',
+    ];
+
+    if (_units.contains(provider.defaultUnit)) {
+      _selectedUnit = provider.defaultUnit;
+    } else {
+      _selectedUnit = _units.first;
+    }
+
     if (provider.skillCategories.isNotEmpty) {
       _selectedCategory = provider.skillCategories.first;
     }
@@ -56,23 +68,30 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   }
 
   void _showAddCategoryDialog() {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final isAr = provider.appLocale.languageCode == 'ar';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إضافة صنف جديد'),
+        title: Text(isAr ? 'إضافة صنف جديد' : 'Add New Category'),
         content: TextField(
           controller: _categoryController,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'اسم الصنف'),
+          decoration: InputDecoration(labelText: isAr ? 'اسم الصنف' : 'Category Name'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(isAr ? 'إلغاء' : 'Cancel')
+          ),
           ElevatedButton(
             onPressed: () {
-              if (_categoryController.text.trim().isNotEmpty) {
-                final provider = Provider.of<AppProvider>(context, listen: false);
-                final newCategory = _categoryController.text.trim();
-                provider.addSkillCategory(newCategory);
+              final newCategory = _categoryController.text.trim();
+              if (newCategory.isNotEmpty) {
+                if (!provider.skillCategories.contains(newCategory)) {
+                  provider.addSkillCategory(newCategory);
+                }
                 setState(() {
                   _selectedCategory = newCategory;
                 });
@@ -80,7 +99,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('إضافة'),
+            child: Text(isAr ? 'إضافة' : 'Add'),
           ),
         ],
       ),
@@ -104,6 +123,9 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   }
 
   void _submit() {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final isAr = provider.appLocale.languageCode == 'ar';
+
     if (_formKey.currentState!.validate() && _selectedCategory != null) {
       List<Milestone> milestones = [];
       for (int i = 0; i < _milestoneValueControllers.length; i++) {
@@ -125,7 +147,15 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
         milestones: milestones,
       );
 
-      Provider.of<AppProvider>(context, listen: false).addSkill(newSkill);
+      provider.addSkill(newSkill);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(isAr ? 'تم حفظ المهارة بنجاح!' : 'Skill saved successfully!'),
+            backgroundColor: Colors.green
+        ),
+      );
+
       Navigator.pop(context);
     }
   }
@@ -133,9 +163,10 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
+    final isAr = provider.appLocale.languageCode == 'ar';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('إضافة مهارة جديدة')),
+      appBar: AppBar(title: Text(isAr ? 'إضافة مهارة جديدة' : 'Add New Skill')),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -143,8 +174,13 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
           children: [
             TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'اسم المهارة', border: OutlineInputBorder()),
-              validator: (v) => v == null || v.trim().isEmpty ? 'لا يمكن ترك الاسم فارغاً' : null,
+              decoration: InputDecoration(
+                  labelText: isAr ? 'اسم المهارة' : 'Skill Name',
+                  border: const OutlineInputBorder()
+              ),
+              validator: (v) => v == null || v.trim().isEmpty
+                  ? (isAr ? 'لا يمكن ترك الاسم فارغاً' : 'Name cannot be empty')
+                  : null,
             ),
             const SizedBox(height: 16),
             Row(
@@ -152,18 +188,23 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _selectedCategory,
-                    validator: (v) => v == null ? 'الرجاء اختيار صنف' : null,
-                    decoration: const InputDecoration(labelText: 'الصنف', border: OutlineInputBorder()),
-                    items: provider.skillCategories
-                        .map((String category) => DropdownMenuItem<String>(value: category, child: Text(category)))
-                        .toList(),
+                    validator: (v) => v == null
+                        ? (isAr ? 'الرجاء اختيار صنف' : 'Please select a category')
+                        : null,
+                    decoration: InputDecoration(
+                        labelText: isAr ? 'الصنف' : 'Category',
+                        border: const OutlineInputBorder()
+                    ),
+                    items: provider.skillCategories.toSet().map((String category) =>
+                        DropdownMenuItem<String>(value: category, child: Text(category))
+                    ).toList(),
                     onChanged: (newValue) => setState(() => _selectedCategory = newValue),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline),
                   onPressed: _showAddCategoryDialog,
-                  tooltip: 'إضافة صنف جديد',
+                  tooltip: isAr ? 'إضافة صنف جديد' : 'Add new category',
                 ),
               ],
             ),
@@ -172,27 +213,38 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
               value: _selectedUnit,
               items: _units.map((String unit) => DropdownMenuItem<String>(value: unit, child: Text(unit))).toList(),
               onChanged: (newValue) => setState(() => _selectedUnit = newValue!),
-              decoration: const InputDecoration(labelText: 'الوحدة', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                  labelText: isAr ? 'الوحدة' : 'Unit',
+                  border: const OutlineInputBorder()
+              ),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _requiredController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'الهدف النهائي (الكمية المطلوبة)', border: OutlineInputBorder()),
-              validator: (v) => v == null || (double.tryParse(v) ?? 0) <= 0 ? 'أدخل رقماً موجباً' : null,
+              decoration: InputDecoration(
+                  labelText: isAr ? 'الهدف النهائي (الكمية المطلوبة)' : 'Final Goal (Required Amount)',
+                  border: const OutlineInputBorder()
+              ),
+              validator: (v) => v == null || (double.tryParse(v) ?? 0) <= 0
+                  ? (isAr ? 'أدخل رقماً موجباً' : 'Enter a positive number')
+                  : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _spentController,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'الكمية المنجزة حالياً', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                  labelText: isAr ? 'الكمية المنجزة حالياً' : 'Currently Completed Amount',
+                  border: const OutlineInputBorder()
+              ),
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'أدخل رقماً موجباً أو صفراً';
+                if (v == null || v.trim().isEmpty) return isAr ? 'أدخل رقماً موجباً أو صفراً' : 'Enter a positive number or zero';
                 final val = double.tryParse(v);
-                if (val == null || val < 0) return 'أدخل رقماً موجباً أو صفراً';
+                if (val == null || val < 0) return isAr ? 'أدخل رقماً موجباً أو صفراً' : 'Enter a positive number or zero';
                 final requiredVal = double.tryParse(_requiredController.text);
                 if (requiredVal != null && val > requiredVal) {
-                  return 'لا يمكن أن تكون الكمية المنجزة أكبر من الهدف النهائي';
+                  return isAr ? 'لا يمكن أن تكون الكمية المنجزة أكبر من الهدف النهائي' : 'Completed amount cannot be greater than final goal';
                 }
                 return null;
               },
@@ -201,7 +253,10 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('الأهداف المرحلية (اختياري)', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                    isAr ? 'الأهداف المرحلية (اختياري)' : 'Milestones (Optional)',
+                    style: Theme.of(context).textTheme.titleMedium
+                ),
                 IconButton(
                   icon: const Icon(Icons.add_circle, color: Colors.green),
                   onPressed: _addMilestoneField,
@@ -223,8 +278,20 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
                         child: TextFormField(
                           controller: _milestoneValueControllers[index],
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'القيمة', border: OutlineInputBorder()),
-                          validator: (v) => v == null || v.trim().isEmpty ? 'مطلوب' : null,
+                          decoration: InputDecoration(
+                              labelText: isAr ? 'القيمة' : 'Value',
+                              border: const OutlineInputBorder()
+                          ),
+                          validator: (v) {
+                            if (v == null || v.trim().isEmpty) return isAr ? 'مطلوب' : 'Required';
+                            final val = double.tryParse(v);
+                            if (val == null) return isAr ? 'أدخل رقماً' : 'Enter a number';
+                            final requiredVal = double.tryParse(_requiredController.text);
+                            if (requiredVal != null && val > requiredVal) {
+                              return isAr ? 'أكبر من النهائي!' : 'Greater than goal!';
+                            }
+                            return null;
+                          },
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -232,8 +299,13 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
                         flex: 3,
                         child: TextFormField(
                           controller: _milestoneDescControllers[index],
-                          decoration: const InputDecoration(labelText: 'الوصف', border: OutlineInputBorder()),
-                          validator: (v) => v == null || v.trim().isEmpty ? 'مطلوب' : null,
+                          decoration: InputDecoration(
+                              labelText: isAr ? 'الوصف' : 'Description',
+                              border: const OutlineInputBorder()
+                          ),
+                          validator: (v) => v == null || v.trim().isEmpty
+                              ? (isAr ? 'مطلوب' : 'Required')
+                              : null,
                         ),
                       ),
                       IconButton(
@@ -249,7 +321,7 @@ class _AddSkillScreenState extends State<AddSkillScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
               onPressed: _submit,
-              child: const Text('حفظ المهارة'),
+              child: Text(isAr ? 'حفظ المهارة' : 'Save Skill', style: const TextStyle(fontSize: 16)),
             ),
           ],
         ),
