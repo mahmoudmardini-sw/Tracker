@@ -12,6 +12,7 @@ class AddHabitScreen extends StatefulWidget {
 }
 
 class _AddHabitScreenState extends State<AddHabitScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _categoryController = TextEditingController();
   HabitType _selectedType = HabitType.binary;
@@ -27,23 +28,30 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   }
 
   void _showAddCategoryDialog() {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final isAr = provider.appLocale.languageCode == 'ar';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('إضافة صنف جديد'),
+        title: Text(isAr ? 'إضافة صنف جديد' : 'Add New Category'),
         content: TextField(
           controller: _categoryController,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'اسم الصنف'),
+          decoration: InputDecoration(labelText: isAr ? 'اسم الصنف' : 'Category Name'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(isAr ? 'إلغاء' : 'Cancel')
+          ),
           ElevatedButton(
             onPressed: () {
-              if (_categoryController.text.trim().isNotEmpty) {
-                final provider = Provider.of<AppProvider>(context, listen: false);
-                final newCategory = _categoryController.text.trim();
-                provider.addHabitCategory(newCategory);
+              final newCategory = _categoryController.text.trim();
+              if (newCategory.isNotEmpty) {
+                if (!provider.habitCategories.contains(newCategory)) {
+                  provider.addHabitCategory(newCategory);
+                }
                 setState(() {
                   _selectedCategory = newCategory;
                 });
@@ -51,7 +59,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('إضافة'),
+            child: Text(isAr ? 'إضافة' : 'Add'),
           ),
         ],
       ),
@@ -59,14 +67,25 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   }
 
   void _submit() {
-    if (_nameController.text.trim().isNotEmpty && _selectedCategory != null) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final isAr = provider.appLocale.languageCode == 'ar';
+
+    if (_formKey.currentState!.validate() && _selectedCategory != null) {
       final newHabit = Habit(
         id: const Uuid().v4(),
         name: _nameController.text.trim(),
         type: _selectedType,
         category: _selectedCategory!,
       );
-      Provider.of<AppProvider>(context, listen: false).addHabit(newHabit);
+      provider.addHabit(newHabit);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(isAr ? 'تمت إضافة العادة بنجاح!' : 'Habit added successfully!'),
+            backgroundColor: Colors.green
+        ),
+      );
+
       Navigator.pop(context);
     }
   }
@@ -81,18 +100,25 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
+    final isAr = provider.appLocale.languageCode == 'ar';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('إضافة عادة جديدة')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+      appBar: AppBar(title: Text(isAr ? 'إضافة عادة جديدة' : 'Add New Habit')),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
           children: [
-            TextField(
+            TextFormField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'اسم العادة', border: OutlineInputBorder()),
+              decoration: InputDecoration(
+                  labelText: isAr ? 'اسم العادة' : 'Habit Name',
+                  border: const OutlineInputBorder()
+              ),
               autofocus: true,
+              validator: (value) => value == null || value.trim().isEmpty
+                  ? (isAr ? 'الرجاء إدخال اسم العادة' : 'Please enter habit name')
+                  : null,
             ),
             const SizedBox(height: 20),
             Row(
@@ -100,9 +126,14 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _selectedCategory,
-                    validator: (v) => v == null ? 'الرجاء اختيار صنف' : null,
-                    decoration: const InputDecoration(labelText: 'الصنف', border: OutlineInputBorder()),
-                    items: provider.habitCategories.map((String category) {
+                    validator: (v) => v == null
+                        ? (isAr ? 'الرجاء اختيار صنف' : 'Please select a category')
+                        : null,
+                    decoration: InputDecoration(
+                        labelText: isAr ? 'الصنف' : 'Category',
+                        border: const OutlineInputBorder()
+                    ),
+                    items: provider.habitCategories.toSet().map((String category) {
                       return DropdownMenuItem<String>(value: category, child: Text(category));
                     }).toList(),
                     onChanged: (newValue) => setState(() => _selectedCategory = newValue),
@@ -111,7 +142,7 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline),
                   onPressed: _showAddCategoryDialog,
-                  tooltip: 'إضافة صنف جديد',
+                  tooltip: isAr ? 'إضافة صنف جديد' : 'Add new category',
                 ),
               ],
             ),
@@ -120,20 +151,28 @@ class _AddHabitScreenState extends State<AddHabitScreen> {
               style: SegmentedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              segments: const [
-                ButtonSegment(value: HabitType.binary, label: Text('إنجاز'), icon: Icon(Icons.check_box_outlined)),
-                ButtonSegment(value: HabitType.counter, label: Text('عداد'), icon: Icon(Icons.add_circle_outline)),
+              segments: [
+                ButtonSegment(
+                    value: HabitType.binary,
+                    label: Text(isAr ? 'إنجاز' : 'Done/Skip'),
+                    icon: const Icon(Icons.check_box_outlined)
+                ),
+                ButtonSegment(
+                    value: HabitType.counter,
+                    label: Text(isAr ? 'عداد' : 'Counter'),
+                    icon: const Icon(Icons.add_circle_outline)
+                ),
               ],
               selected: {_selectedType},
               onSelectionChanged: (newSelection) {
                 setState(() => _selectedType = newSelection.first);
               },
             ),
-            const Spacer(),
+            const SizedBox(height: 40),
             ElevatedButton(
               style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
               onPressed: _submit,
-              child: const Text('إضافة العادة'),
+              child: Text(isAr ? 'إضافة العادة' : 'Add Habit', style: const TextStyle(fontSize: 16)),
             )
           ],
         ),
