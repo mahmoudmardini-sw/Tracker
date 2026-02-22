@@ -17,6 +17,7 @@ import 'daily_log_screen.dart';
 import 'skill_detail_screen.dart';
 import 'settings_screen.dart';
 import 'habit_detail_screen.dart';
+import 'statistics_screen.dart'; // تأكدنا من استدعاء شاشة الإحصائيات هنا
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -87,16 +88,28 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           ),
           PopupMenuButton<String>(
             onSelected: (value) {
-              if (value == 'settings') {
+              if (value == 'stats') {
+                // تم تصحيح هذا السطر وإزالة (skills: [])
+                Navigator.push(context, MaterialPageRoute(builder: (context) => const StatisticsScreen()));
+              } else if (value == 'settings') {
                 Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen()));
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               PopupMenuItem<String>(
+                value: 'stats',
+                child: ListTile(
+                  leading: const Icon(Icons.bar_chart),
+                  title: Text(provider.appLocale.languageCode == 'ar' ? 'الإحصائيات' : 'Statistics'),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem<String>(
                 value: 'settings',
                 child: ListTile(
                   leading: const Icon(Icons.settings_outlined),
                   title: Text(l10n.settings),
+                  contentPadding: EdgeInsets.zero,
                 ),
               ),
             ],
@@ -286,7 +299,6 @@ class SkillsTab extends StatelessWidget {
                             Text(
                               l10n.completed(skill.spentValue.toStringAsFixed(1), skill.requiredValue.toStringAsFixed(1), skill.unit),
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                // تم استبدال withOpacity بـ withValues لتجنب التحذيرات
                                 color: colorScheme.onSurface.withValues(alpha: 0.7),
                               ),
                             ),
@@ -322,7 +334,6 @@ class MilestoneProgressBar extends StatelessWidget {
             Container(
               height: 8,
               decoration: BoxDecoration(
-                // تم استبدال withOpacity بـ withValues لتجنب التحذيرات
                 color: colorScheme.primary.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(4),
               ),
